@@ -25,13 +25,16 @@ import org.jetbrains.kotlin.js.translate.utils.AnnotationsUtils
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.resolve.checkers.DeclarationCheckerContext
 import org.jetbrains.kotlin.resolve.checkers.DeclarationChecker
+import org.jetbrains.kotlin.resolve.checkers.DeclarationCheckerContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.isExtension
 import org.jetbrains.kotlin.resolve.descriptorUtil.isExtensionProperty
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 
-class JsNameClashChecker(private val nameSuggestion: NameSuggestion) : DeclarationChecker {
+class JsNameClashChecker(
+    private val nameSuggestion: NameSuggestion,
+    private val moduleDescriptor: ModuleDescriptor
+) : DeclarationChecker {
     companion object {
         private val COMMON_DIAGNOSTICS = setOf(
                 Errors.REDECLARATION,
