@@ -16,17 +16,27 @@
 
 package org.jetbrains.kotlin.types
 
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
-import org.jetbrains.kotlin.descriptors.TypeAliasDescriptor
-import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.resolve.constants.IntegerLiteralTypeConstructor
+import org.jetbrains.kotlin.resolve.descriptorUtil.classId
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
-import org.jetbrains.kotlin.types.checker.NewKotlinTypeChecker
+import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 object KotlinTypeFactory {
-    private fun computeMemberScope(constructor: TypeConstructor, arguments: List<TypeProjection>): MemberScope {
-        val descriptor = constructor.declarationDescriptor
+    private fun computeMemberScope(
+        constructor: TypeConstructor,
+        arguments: List<TypeProjection>,
+        moduleDescriptor: ModuleDescriptor? = null
+    ): MemberScope {
+        val basicDescriptor = constructor.declarationDescriptor
+        val classId = basicDescriptor.safeAs<ClassifierDescriptorWithTypeParameters>()?.classId
+        val descriptor =
+            if (classId != null)
+                moduleDescriptor?.findClassAcrossModuleDependencies(classId) ?: basicDescriptor
+            else basicDescriptor
+
         return when (descriptor) {
             is TypeParameterDescriptor -> descriptor.getDefaultType().memberScope
             is ClassDescriptor -> {
@@ -52,12 +62,11 @@ object KotlinTypeFactory {
         }
 
         return simpleTypeWithNonTrivialMemberScope(
-            annotations,
-            constructor,
-            arguments,
-            nullable,
+            annotations, constructor, arguments, nullable,
             computeMemberScope(constructor, arguments)
-        )
+        ) { moduleDescriptor ->
+            computeMemberScope(constructor, arguments, moduleDescriptor)
+        }
     }
 
     @JvmStatic
@@ -68,7 +77,24 @@ object KotlinTypeFactory {
         nullable: Boolean,
         memberScope: MemberScope
     ): SimpleType =
-        SimpleTypeImpl(constructor, arguments, nullable, memberScope)
+        SimpleTypeImpl(constructor, arguments, nullable, memberScope, { memberScope })
+            .let {
+                if (annotations.isEmpty())
+                    it
+                else
+                    AnnotatedSimpleType(it, annotations)
+            }
+
+    @JvmStatic
+    fun simpleTypeWithNonTrivialMemberScope(
+            annotations: Annotations,
+            constructor: TypeConstructor,
+            arguments: List<TypeProjection>,
+            nullable: Boolean,
+            memberScope: MemberScope,
+            scopeFactory: (ModuleDescriptor) -> MemberScope
+    ): SimpleType =
+            SimpleTypeImpl(constructor, arguments, nullable, memberScope, scopeFactory)
             .let {
                 if (annotations.isEmpty())
                     it
@@ -116,7 +142,8 @@ private class SimpleTypeImpl(
     override val constructor: TypeConstructor,
     override val arguments: List<TypeProjection>,
     override val isMarkedNullable: Boolean,
-    override val memberScope: MemberScope
+    override val memberScope: MemberScope,
+        private val scopeFactory: (ModuleDescriptor) -> MemberScope
 ) : SimpleType() {
     override val annotations: Annotations get() = Annotations.EMPTY
 
@@ -137,6 +164,12 @@ private class SimpleTypeImpl(
             throw IllegalStateException("SimpleTypeImpl should not be created for error type: $memberScope\n$constructor")
         }
     }
+
+    override fun refine(moduleDescriptor: ModuleDescriptor): SimpleType {
+        if (constructor.declarationDescriptor?.module === moduleDescriptor) return this
+
+        return SimpleTypeImpl(constructor, arguments, isMarkedNullable, scopeFactory(moduleDescriptor), scopeFactory)
+    }
 }
 
 abstract class DelegatingSimpleTypeImpl(override val delegate: SimpleType) : DelegatingSimpleType() {
@@ -155,14 +188,20 @@ abstract class DelegatingSimpleTypeImpl(override val delegate: SimpleType) : Del
 private class AnnotatedSimpleType(
     delegate: SimpleType,
     override val annotations: Annotations
-) : DelegatingSimpleTypeImpl(delegate)
+) : DelegatingSimpleTypeImpl(delegate) {
+    override fun replaceDelegate(delegate: SimpleType) = AnnotatedSimpleType(delegate, annotations)
+}
 
 private class NullableSimpleType(delegate: SimpleType) : DelegatingSimpleTypeImpl(delegate) {
     override val isMarkedNullable: Boolean
         get() = true
+
+    override fun replaceDelegate(delegate: SimpleType) = NullableSimpleType(delegate)
 }
 
 private class NotNullSimpleType(delegate: SimpleType) : DelegatingSimpleTypeImpl(delegate) {
     override val isMarkedNullable: Boolean
         get() = false
+
+    override fun replaceDelegate(delegate: SimpleType) = NotNullSimpleType(delegate)
 }

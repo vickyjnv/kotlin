@@ -17,6 +17,7 @@
 package org.jetbrains.kotlin.types;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor;
 import org.jetbrains.kotlin.types.model.TypeArgumentMarker;
 
 public interface TypeProjection extends TypeArgumentMarker {
@@ -27,4 +28,7 @@ public interface TypeProjection extends TypeArgumentMarker {
     KotlinType getType();
 
     boolean isStarProjection();
+
+    @NotNull
+    TypeProjection refine(@NotNull ModuleDescriptor moduleDescriptor);
 }

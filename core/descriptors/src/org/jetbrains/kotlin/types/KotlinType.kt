@@ -16,10 +16,12 @@
 
 package org.jetbrains.kotlin.types
 
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.renderer.DescriptorRendererOptions
+import org.jetbrains.kotlin.resolve.descriptorUtil.classId
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.types.checker.StrictEqualityTypeChecker
 import org.jetbrains.kotlin.types.model.FlexibleTypeMarker
@@ -52,6 +54,8 @@ sealed class KotlinType : Annotated, KotlinTypeMarker {
     abstract val memberScope: MemberScope
 
     abstract fun unwrap(): UnwrappedType
+
+    abstract fun refine(moduleDescriptor: ModuleDescriptor): KotlinType
 
     final override fun hashCode(): Int {
         if (isError) return super.hashCode()
@@ -115,6 +119,8 @@ sealed class UnwrappedType : KotlinType() {
     abstract fun makeNullableAsSpecified(newNullability: Boolean): UnwrappedType
 
     final override fun unwrap(): UnwrappedType = this
+
+    abstract override fun refine(moduleDescriptor: ModuleDescriptor): UnwrappedType
 }
 
 /**
@@ -125,6 +131,8 @@ sealed class UnwrappedType : KotlinType() {
 abstract class SimpleType : UnwrappedType(), SimpleTypeMarker, TypeArgumentListMarker {
     abstract override fun replaceAnnotations(newAnnotations: Annotations): SimpleType
     abstract override fun makeNullableAsSpecified(newNullability: Boolean): SimpleType
+
+    abstract override fun refine(moduleDescriptor: ModuleDescriptor): SimpleType
 
     override fun toString(): String {
         return buildString {
@@ -161,6 +169,8 @@ abstract class FlexibleType(val lowerBound: SimpleType, val upperBound: SimpleTy
     override val memberScope: MemberScope get() = delegate.memberScope
 
     override fun toString(): String = DescriptorRenderer.DEBUG_TEXT.renderType(this)
+
+    abstract override fun refine(moduleDescriptor: ModuleDescriptor): FlexibleType
 }
 
 val KotlinType.isError: Boolean
@@ -168,3 +178,9 @@ val KotlinType.isError: Boolean
         unwrapped is ErrorType ||
                 (unwrapped is FlexibleType && unwrapped.delegate is ErrorType)
     }
+
+fun DeclarationDescriptor.refineDescriptor(moduleDescriptor: ModuleDescriptor): ClassDescriptor? {
+    if (this !is ClassifierDescriptorWithTypeParameters) return null
+    val classId = this.classId ?: return null
+    return moduleDescriptor.findClassifierAcrossModuleDependencies(classId) as? ClassDescriptor
+}

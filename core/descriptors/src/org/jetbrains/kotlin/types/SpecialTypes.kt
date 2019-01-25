@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.types
 
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
@@ -33,6 +34,10 @@ abstract class DelegatingSimpleType : SimpleType() {
     override val arguments: List<TypeProjection> get() = delegate.arguments
     override val isMarkedNullable: Boolean get() = delegate.isMarkedNullable
     override val memberScope: MemberScope get() = delegate.memberScope
+
+    abstract fun replaceDelegate(delegate: SimpleType): DelegatingSimpleType
+
+    override fun refine(moduleDescriptor: ModuleDescriptor) = replaceDelegate(delegate.refine(moduleDescriptor))
 }
 
 class AbbreviatedType(override val delegate: SimpleType, val abbreviation: SimpleType) : DelegatingSimpleType() {
@@ -43,6 +48,8 @@ class AbbreviatedType(override val delegate: SimpleType, val abbreviation: Simpl
 
     override fun makeNullableAsSpecified(newNullability: Boolean)
             = AbbreviatedType(delegate.makeNullableAsSpecified(newNullability), abbreviation.makeNullableAsSpecified(newNullability))
+
+    override fun replaceDelegate(delegate: SimpleType) = AbbreviatedType(delegate, abbreviation)
 }
 
 fun KotlinType.getAbbreviatedType(): AbbreviatedType? = unwrap() as? AbbreviatedType
@@ -53,12 +60,19 @@ fun SimpleType.withAbbreviation(abbreviatedType: SimpleType): SimpleType {
     return AbbreviatedType(this, abbreviatedType)
 }
 
-class LazyWrappedType(storageManager: StorageManager, computation: () -> KotlinType): WrappedType() {
+class LazyWrappedType(
+    private val storageManager: StorageManager,
+    private val computation: () -> KotlinType
+): WrappedType() {
     private val lazyValue = storageManager.createLazyValue(computation)
 
     override val delegate: KotlinType get() = lazyValue()
 
     override fun isComputed(): Boolean = lazyValue.isComputed()
+
+    override fun refine(moduleDescriptor: ModuleDescriptor) = LazyWrappedType(storageManager) {
+        computation().refine(moduleDescriptor)
+    }
 }
 
 class DefinitelyNotNullType private constructor(val original: SimpleType) : DelegatingSimpleType(), CustomTypeVariable,
@@ -108,6 +122,8 @@ class DefinitelyNotNullType private constructor(val original: SimpleType) : Dele
             if (newNullability) delegate.makeNullableAsSpecified(newNullability) else this
 
     override fun toString(): String = "$delegate!!"
+
+    override fun replaceDelegate(delegate: SimpleType) = DefinitelyNotNullType(delegate)
 }
 
 val KotlinType.isDefinitelyNotNullType: Boolean
@@ -127,13 +143,7 @@ private fun KotlinType.makeIntersectionTypeDefinitelyNotNullOrNotNull(): SimpleT
     val typeConstructor = constructor as? IntersectionTypeConstructor ?: return null
     val definitelyNotNullConstructor = typeConstructor.makeDefinitelyNotNullOrNotNull() ?: return null
 
-    return KotlinTypeFactory.simpleTypeWithNonTrivialMemberScope(
-        annotations,
-        definitelyNotNullConstructor,
-        listOf(),
-        false,
-        definitelyNotNullConstructor.createScopeForKotlinType()
-    )
+    return definitelyNotNullConstructor.createType()
 }
 
 private fun IntersectionTypeConstructor.makeDefinitelyNotNullOrNotNull(): IntersectionTypeConstructor? {

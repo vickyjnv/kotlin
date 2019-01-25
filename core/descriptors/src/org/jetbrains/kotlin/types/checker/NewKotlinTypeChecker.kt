@@ -27,8 +27,7 @@ import org.jetbrains.kotlin.types.AbstractNullabilityChecker.hasNotNullSupertype
 import org.jetbrains.kotlin.types.AbstractNullabilityChecker.hasPathByNotMarkedNullableNodes
 import org.jetbrains.kotlin.types.AbstractTypeCheckerContext.SupertypesPolicy
 import org.jetbrains.kotlin.types.model.CaptureStatus
-import org.jetbrains.kotlin.types.typeUtil.*
-import org.jetbrains.kotlin.utils.addToStdlib.cast
+import org.jetbrains.kotlin.types.typeUtil.makeNullable
 
 object SimpleClassicTypeSystemContext : ClassicTypeSystemContext
 
@@ -104,13 +103,8 @@ object NewKotlinTypeChecker : KotlinTypeChecker {
 
             is IntersectionTypeConstructor -> if (type.isMarkedNullable) {
                 val newConstructor = constructor.transformComponents(transform = { it.makeNullable() }) ?: constructor
-                return KotlinTypeFactory.simpleTypeWithNonTrivialMemberScope(
-                    type.annotations,
-                    newConstructor,
-                    listOf(),
-                    false,
-                    newConstructor.createScopeForKotlinType()
-                )
+                return newConstructor.createType()
+
             }
         }
 
