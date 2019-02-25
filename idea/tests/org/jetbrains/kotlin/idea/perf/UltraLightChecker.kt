@@ -20,10 +20,10 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.Assert
 
-fun UsefulTestCase.forceUsingUltraLightClassesForTest() {
-    KtUltraLightClass.forceUsingUltraLightClasses = true
+fun UsefulTestCase.forceUsingOldLightClassesForTest() {
+    KtUltraLightClass.forceUsingOldLightClasses = true
     Disposer.register(testRootDisposable, Disposable {
-        KtUltraLightClass.forceUsingUltraLightClasses = false
+        KtUltraLightClass.forceUsingOldLightClasses = false
     })
 }
 

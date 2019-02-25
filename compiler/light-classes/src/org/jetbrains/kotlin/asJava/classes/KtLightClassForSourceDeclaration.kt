@@ -348,7 +348,7 @@ abstract class KtLightClassForSourceDeclaration(protected val classOrObject: KtC
                 return null
             }
 
-            if (KtUltraLightClass.forceUsingUltraLightClasses || Registry.`is`("kotlin.use.ultra.light.classes", false)) {
+            if (!KtUltraLightClass.forceUsingOldLightClasses && Registry.`is`("kotlin.use.ultra.light.classes", true)) {
                 LightClassGenerationSupport.getInstance(classOrObject.project).createUltraLightClass(classOrObject)?.let { return it }
             }
 
