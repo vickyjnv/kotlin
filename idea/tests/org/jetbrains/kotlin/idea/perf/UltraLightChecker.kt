@@ -38,7 +38,7 @@ object UltraLightChecker {
         SyntaxTraverser.psiTraverser(file).filter(KtClassOrObject::class.java).toList()
 
     fun checkClassEquivalence(ktClass: KtClassOrObject): KtUltraLightClass? {
-        val gold = KtLightClassForSourceDeclaration.create(ktClass)
+        val gold = KtLightClassForSourceDeclaration.createNoCache(ktClass, forceUsingOldLightClasses = true)
         val ultraLightClass = LightClassGenerationSupport.getInstance(ktClass.project).createUltraLightClass(ktClass) ?: return null
 
         if (gold != null) {
