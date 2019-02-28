@@ -15,6 +15,7 @@ buildscript {
     repositories.withRedirector(project) {
         bootstrapKotlinRepo?.let(::maven)
         maven("https://plugins.gradle.org/m2")
+        maven("https://dl.bintray.com/kotlin/ktor")
     }
 
     // a workaround for kotlin compiler classpath in kotlin project: sometimes gradle substitutes
@@ -93,6 +94,17 @@ val artifactsDir = "$distDir/artifacts"
 val ideaPluginDir = "$artifactsDir/ideaPlugin/Kotlin"
 val ideaUltimatePluginDir = "$artifactsDir/ideaUltimatePlugin/Kotlin"
 
+extra["ktorExcludesForDaemon"] = listOf(
+    "org.jetbrains.kotlin" to "kotlin-reflect",
+    "org.jetbrains.kotlin" to "kotlin-stdlib",
+    "org.jetbrains.kotlin" to "kotlin-stdlib-common",
+    "org.jetbrains.kotlin" to "kotlin-stdlib-jdk8",
+    "org.jetbrains.kotlin" to "kotlin-stdlib-jdk7",
+    "org.jetbrains.kotlinx" to "kotlinx-coroutines-jdk8",
+    "org.jetbrains.kotlinx" to "kotlinx-coroutines-core",
+    "org.jetbrains.kotlinx" to "kotlinx-coroutines-core-common"
+)
+
 // TODO: use "by extra()" syntax where possible
 extra["distLibDir"] = project.file(distLibDir)
 extra["libsDir"] = project.file(distLibDir)
@@ -157,6 +169,7 @@ extra["versions.org.springframework"] = "4.2.0.RELEASE"
 extra["versions.jflex"] = "1.7.0"
 extra["versions.markdown"] = "0.1.25"
 extra["versions.trove4j"] = "1.0.20181211"
+extra["versions.ktor-network"] = "1.0.1"
 
 if (!project.hasProperty("versions.kotlin-native")) {
     extra["versions.kotlin-native"] = "1.3-dev-9457"
@@ -206,6 +219,7 @@ extra["compilerModules"] = arrayOf(
         ":compiler:frontend.java",
         ":compiler:cli-common",
         ":compiler:daemon-common",
+        ":compiler:daemon-common-new",
         ":compiler:daemon",
         ":compiler:ir.tree",
         ":compiler:ir.psi2ir",
@@ -317,6 +331,7 @@ allprojects {
         maven(protobufRepo)
         maven(intellijRepo)
         maven(bootstrapKotlinRepo!!.replace("artifacts/content/maven/", "artifacts/content/internal/repo"))
+        maven("https://dl.bintray.com/kotlin/ktor")
     }
 
     configureJvmProject(javaHome!!, jvmTarget!!)
