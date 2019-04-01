@@ -144,7 +144,7 @@ internal object RawSubstitution : TypeSubstitution() {
 
             moduleDescriptor
                 .findClassAcrossModuleDependencies(classId)
-                ?.getMemberScope(RawSubstitution) ?: memberScope
+                ?.getMemberScope(RawSubstitution, moduleDescriptor) ?: memberScope
         } to true
     }
 

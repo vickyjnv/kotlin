@@ -11,7 +11,6 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.types.*
-import java.lang.IllegalStateException
 
 class IntegerLiteralTypeConstructor : TypeConstructor {
     companion object {
@@ -64,7 +63,7 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
 
         private fun fold(left: IntegerLiteralTypeConstructor, right: SimpleType): SimpleType? =
             if (right in left.possibleTypes) right else null
-        
+
     }
 
     private val value: Long
@@ -74,7 +73,7 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
     constructor(value: Long, module: ModuleDescriptor, parameters: CompileTimeConstant.Parameters) {
         this.value = value
         this.module = module
-        
+
         val possibleTypes = mutableSetOf<KotlinType>()
 
         fun checkBoundsAndAddPossibleType(value: Long, kotlinType: KotlinType) {
@@ -143,15 +142,15 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
         builtIns.longType in possibleTypes -> builtIns.longType
         builtIns.byteType in possibleTypes -> builtIns.byteType
         builtIns.shortType in possibleTypes -> builtIns.shortType
-        
+
         module.uIntType in possibleTypes -> module.uIntType
         module.uLongType in possibleTypes -> module.uLongType
         module.uByteType in possibleTypes -> module.uByteType
         module.uShortType in possibleTypes -> module.uShortType
-        
+
         else -> throw IllegalStateException()
     }
-    
+
 
     override fun getParameters(): List<TypeParameterDescriptor> = emptyList()
 
@@ -172,4 +171,9 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
     fun checkConstructor(constructor: TypeConstructor): Boolean = possibleTypes.any { it.constructor == constructor }
 
     private fun valueToString(): String = "[${possibleTypes.joinToString(",") { it.toString() }}]"
+
+    override fun getSupertypes(moduleDescriptor: ModuleDescriptor): Collection<KotlinType> {
+        if (moduleDescriptor.builtIns === builtIns) return supertypes
+        return supertypes.map { it.refine(moduleDescriptor) }
+    }
 }
