@@ -315,7 +315,18 @@ public class LazyClassDescriptor extends ClassDescriptorBase implements ClassDes
         return ScopesHolderForClass.Companion.create(
                 this,
                 c.getStorageManager(),
-                moduleDescriptor -> new LazyClassMemberScope(c, declarationProvider, this, c.getTrace(), moduleDescriptor)
+                moduleDescriptor -> {
+                    LazyClassMemberScope scopeForDeclaredMembers =
+                            moduleDescriptor == c.getModuleDescriptor()
+                                ? null
+                                : scopesHolderForClass.getScope(c.getModuleDescriptor());
+
+                    return new LazyClassMemberScope(
+                            c, declarationProvider, this, c.getTrace(), moduleDescriptor,
+                            scopeForDeclaredMembers
+                    );
+                }
+
         );
     }
 

@@ -48,8 +48,11 @@ open class LazyClassMemberScope(
     declarationProvider: ClassMemberDeclarationProvider,
     thisClass: ClassDescriptorWithResolutionScopes,
     trace: BindingTrace,
-    private val moduleDescriptor: ModuleDescriptor = c.moduleDescriptor
-) : AbstractLazyMemberScope<ClassDescriptorWithResolutionScopes, ClassMemberDeclarationProvider>(c, declarationProvider, thisClass, trace) {
+    private val moduleDescriptor: ModuleDescriptor = c.moduleDescriptor,
+    scopeForDeclaredMembers: LazyClassMemberScope? = null
+) : AbstractLazyMemberScope<ClassDescriptorWithResolutionScopes, ClassMemberDeclarationProvider>(
+    c, declarationProvider, thisClass, trace, scopeForDeclaredMembers
+) {
 
     private val descriptorsFromDeclaredElements = storageManager.createLazyValue {
         computeDescriptorsFromDeclaredElements(
@@ -366,10 +369,12 @@ open class LazyClassMemberScope(
 
             val parameter = primaryConstructorParameters.get(valueParameterDescriptor.index)
             if (parameter.hasValOrVar()) {
-                val propertyDescriptor = c.descriptorResolver.resolvePrimaryConstructorParameterToAProperty(
-                    // TODO: can't test because we get types from cache for this case
-                    thisDescriptor, valueParameterDescriptor, thisDescriptor.scopeForConstructorHeaderResolution, parameter, trace
-                )
+                val propertyDescriptor =
+                    trace.get(BindingContext.PRIMARY_CONSTRUCTOR_PARAMETER, parameter)
+                        ?: c.descriptorResolver.resolvePrimaryConstructorParameterToAProperty(
+                            // TODO: can't test because we get types from cache for this case
+                            thisDescriptor, valueParameterDescriptor, thisDescriptor.scopeForConstructorHeaderResolution, parameter, trace
+                        )
                 result.add(propertyDescriptor)
             }
         }
@@ -419,12 +424,13 @@ open class LazyClassMemberScope(
         c.storageManager.createLazyValue { resolveSecondaryConstructors() }
 
     fun getConstructors(): Collection<ClassConstructorDescriptor> {
-        val result = secondaryConstructors()
+        val result = (mainScope as LazyClassMemberScope?)?.secondaryConstructors?.invoke() ?: secondaryConstructors()
         val primaryConstructor = getPrimaryConstructor()
         return if (primaryConstructor == null) result else result + primaryConstructor
     }
 
-    fun getPrimaryConstructor(): ClassConstructorDescriptor? = primaryConstructor()
+    fun getPrimaryConstructor(): ClassConstructorDescriptor? =
+        (mainScope as LazyClassMemberScope?)?.primaryConstructor?.invoke() ?: primaryConstructor()
 
     protected open fun resolvePrimaryConstructor(): ClassConstructorDescriptor? {
         val classOrObject = declarationProvider.correspondingClassOrObject ?: return null
