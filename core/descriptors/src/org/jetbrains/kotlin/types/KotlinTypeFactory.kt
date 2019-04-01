@@ -40,10 +40,19 @@ object KotlinTypeFactory {
         return when (descriptor) {
             is TypeParameterDescriptor -> descriptor.getDefaultType().memberScope
             is ClassDescriptor -> {
+                val refinedConstructor =
+                    if (descriptor != basicDescriptor)
+                        descriptor.typeConstructor
+                    else
+                        constructor
+
                 if (arguments.isEmpty())
                     descriptor.defaultType.memberScope
                 else
-                    descriptor.getMemberScope(TypeConstructorSubstitution.create(constructor, arguments))
+                    descriptor.getMemberScope(
+                        TypeConstructorSubstitution.create(refinedConstructor, arguments),
+                        moduleDescriptor ?: descriptor.module
+                    )
             }
             is TypeAliasDescriptor -> ErrorUtils.createErrorScope("Scope for abbreviation: ${descriptor.name}", true)
             else -> throw IllegalStateException("Unsupported classifier: $descriptor for constructor: $constructor")
@@ -87,14 +96,14 @@ object KotlinTypeFactory {
 
     @JvmStatic
     fun simpleTypeWithNonTrivialMemberScope(
-            annotations: Annotations,
-            constructor: TypeConstructor,
-            arguments: List<TypeProjection>,
-            nullable: Boolean,
-            memberScope: MemberScope,
-            scopeFactory: (ModuleDescriptor) -> MemberScope
+        annotations: Annotations,
+        constructor: TypeConstructor,
+        arguments: List<TypeProjection>,
+        nullable: Boolean,
+        memberScope: MemberScope,
+        scopeFactory: (ModuleDescriptor) -> MemberScope
     ): SimpleType =
-            SimpleTypeImpl(constructor, arguments, nullable, memberScope, scopeFactory)
+        SimpleTypeImpl(constructor, arguments, nullable, memberScope, scopeFactory)
             .let {
                 if (annotations.isEmpty())
                     it
@@ -143,7 +152,7 @@ private class SimpleTypeImpl(
     override val arguments: List<TypeProjection>,
     override val isMarkedNullable: Boolean,
     override val memberScope: MemberScope,
-        private val scopeFactory: (ModuleDescriptor) -> MemberScope
+    private val scopeFactory: (ModuleDescriptor) -> MemberScope
 ) : SimpleType() {
     override val annotations: Annotations get() = Annotations.EMPTY
 
@@ -154,10 +163,10 @@ private class SimpleTypeImpl(
             AnnotatedSimpleType(this, newAnnotations)
 
     override fun makeNullableAsSpecified(newNullability: Boolean) = when {
-            newNullability == isMarkedNullable -> this
-            newNullability -> NullableSimpleType(this)
-            else -> NotNullSimpleType(this)
-        }
+        newNullability == isMarkedNullable -> this
+        newNullability -> NullableSimpleType(this)
+        else -> NotNullSimpleType(this)
+    }
 
     init {
         if (memberScope is ErrorUtils.ErrorScope) {
