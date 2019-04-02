@@ -573,7 +573,8 @@ open class Kotlin2JsCompile : AbstractKotlinCompile<K2JSCompilerArguments>(), Ko
         destinationDir.mkdirs()
 
         val dependencies = compileClasspath
-            .filter { LibraryUtils.isKotlinJavascriptLibrary(it) }
+            // TODO: Better way to detect IR libraries
+            // .filter { LibraryUtils.isKotlinJavascriptLibrary(it) }
             .map { it.canonicalPath }
 
         args.libraries = (dependencies + listOfNotNull(friendDependency)).distinct().let {

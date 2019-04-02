@@ -18,10 +18,15 @@ fun compile(
     project: Project,
     files: List<KtFile>,
     configuration: CompilerConfiguration,
-    phaseConfig: PhaseConfig,
+    phaseConfig: PhaseConfig = PhaseConfig(jsPhases),
     immediateDependencies: List<KlibModuleRef>,
     allDependencies: List<KlibModuleRef>
 ): String {
+
+    println("Compiling: " + files.joinToString(", ") { it.virtualFilePath })
+    println("Immediate dependencies: " + immediateDependencies.joinToString(", "))
+    println("AllDependencies dependencies: " + allDependencies.joinToString(", "))
+
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
         loadIr(project, files, configuration, immediateDependencies, allDependencies)
 

@@ -1,0 +1,193 @@
+//plugins {
+//    id "com.moowork.node" version "1.2.0"
+//}
+//
+//description = 'Kotlin Standard Library for JS IR'
+//
+//apply plugin: 'kotlin-platform-js'
+//apply plugin: 'idea'
+//
+//configureDist(project)
+//configurePublishing(project)
+//
+//def jsStdlibDir = "${rootDir}/libraries/stdlib/js"
+//
+//def builtinsSrcDir = "${buildDir}/builtin-sources"
+//def builtinsSrcDir2 = "${buildDir}/builtin-sources-for-builtins"
+//
+//def builtinsDir = "${rootDir}/core/builtins"
+//def experimentalSrcDir = "${rootDir}/libraries/stdlib/experimental"
+//def experimentalJsModuleName = 'kotlin-experimental'
+//def jsSrcDir = "${jsStdlibDir}/src"
+//def jsTestSrcDir = "${jsStdlibDir}/test"
+//def jsSrcJsDir = "${jsSrcDir}/js"
+//def jsOutputFile = "${buildDir}/classes/kotlin.js"
+//def jsOutputMetaFile = "${buildDir}/classes/kotlin.meta.js"
+//
+//// def kotlinTestJsOutputFile = "${project(':kotlin-test:kotlin-test-js').buildDir}/classes/main/kotlin-test.js"
+//
+//// TODO: take from sourcesets' outputs
+//// def jsTestOutputFile = "${buildDir}/classes/kotlin/test/kotlin-stdlib-js-ir_test.js"
+//// def kotlinTestJsTestOutputFile = "${project(':kotlin-test:kotlin-test-js').buildDir}/classes/kotlin/test/kotlin-test-js_test.js"
+//
+//sourceSets {
+//    main {
+//        kotlin {
+//            // Builtins
+//            srcDir builtinsSrcDir2
+//
+//            srcDir "${jsStdlibDir}/runtime2"
+//
+//            srcDir builtinsSrcDir
+//
+//            // main
+//            srcDir jsSrcDir
+//
+//            // experimental
+//            srcDir experimentalSrcDir
+//        }
+//    }
+//
+////    test {
+////        kotlin {
+////            srcDir jsTestSrcDir
+////        }
+////    }
+//}
+//
+//configurations {
+//    commonSources
+//}
+//dependencies {
+//    expectedBy project(":kotlin-stdlib-common")
+//    commonSources project(path: ":kotlin-stdlib-common", configuration: "sources")
+////    testCompile project(':kotlin-test:kotlin-test-js')
+//}
+//
+//task prepareComparableSource(type: Copy) {
+//    doFirst {
+//        delete builtinsSrcDir2
+//    }
+//    from("${builtinsDir}/native/kotlin") {
+//        include "Comparable.kt"
+//    }
+//    into builtinsSrcDir2
+//}
+//
+//compileKotlin2Js {
+//    dependsOn prepareComparableSource
+//    dependsOn prepareBuiltinsSources
+//
+//    kotlinOptions {
+//        outputFile = "${buildDir}/classes/main/kotlin.js"
+//        moduleKind = "umd"
+//        main = "noCall"
+//        irBackend = true
+//        freeCompilerArgs += [
+//            "-Xallow-kotlin-package",
+//            "-Xallow-result-return-type",
+//            "-Xuse-experimental=kotlin.Experimental",
+//            "-Xuse-experimental=kotlin.ExperimentalMultiplatform",
+//            "-Xuse-experimental=kotlin.contracts.ExperimentalContracts",
+//            "-XXLanguage:+InlineClasses"
+//        ]
+//    }
+//}
+////
+////compileTestKotlin2Js {
+////    kotlinOptions {
+////        moduleKind = "umd"
+////        freeCompilerArgs += [
+////            "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes"
+////        ]
+////    }
+////}
+//
+//
+//classes.dependsOn compileJs
+//
+//
+//jar {
+//    enabled false
+//}
+//
+//task mergedJar(type: Jar, dependsOn: compileJs) {
+//    classifier = null
+//    manifestAttributes(manifest, project, 'Main')
+//
+//    // TODO: Use standard implementation title after js stdlib detector becomes more flexible (KT-17655)
+//    Properties properties = new Properties()
+//    new File("${rootDir}/resources/kotlinManifest.properties").withInputStream {
+//        properties.load(it)
+//    }
+//    manifest.attributes 'Implementation-Title': properties."manifest.impl.title.kotlin.javascript.stdlib"
+//
+//    includeEmptyDirs false
+//    duplicatesStrategy DuplicatesStrategy.EXCLUDE
+//    from jsOutputFile
+//    from jsOutputMetaFile
+//    from sourceSets.main.output
+//    exclude "${experimentalJsModuleName}.*"
+//}
+//
+//
+//artifacts {
+//    runtime mergedJar
+//    archives mergedJar
+//}
+//
+//task distJs(type: Copy) {
+//    from(compileJs)
+//    into "$distDir/js"
+//}
+//
+//dist {
+//    dependsOn distJs
+//    [mergedJar].forEach {
+//        rename("dist-", "")
+//        from(it)
+//    }
+//}
+//
+////node {
+////    download = true
+////    version = '8.9.4' // The default 6.9.1 has buggy hyperbolic functions implementation
+////    nodeModulesDir = buildDir
+////}
+////
+////// Otherwise Node ignores nodeModulesDir
+////task deleteLegacyNodeModules(type: Delete) {
+////    delete "$projectDir/node_modules"
+////}
+////
+////task installMocha(type: NpmTask, dependsOn: [deleteLegacyNodeModules]) {
+////    args = ['install', 'mocha']
+////}
+////
+////task installTeamcityReporter(type: NpmTask, dependsOn: [deleteLegacyNodeModules]) {
+////    args = ['install', 'mocha-teamcity-reporter']
+////}
+////
+////task runMocha(type: NodeTask, dependsOn: [testClasses, installMocha, ':kotlin-test:kotlin-test-js:testClasses']) {
+////    script = file("${buildDir}/node_modules/mocha/bin/mocha")
+////
+////    if (project.hasProperty("teamcity")) {
+////        dependsOn installTeamcityReporter
+////        args = ['--reporter', 'mocha-teamcity-reporter']
+////    }
+////    else {
+////        args = ['--reporter', 'min']
+////    }
+////
+////    args += [jsTestOutputFile, kotlinTestJsTestOutputFile]
+////
+////    execOverrides {
+////        it.ignoreExitValue = rootProject.ignoreTestFailures
+////        it.environment('NODE_PATH', [file(jsOutputFile).parent, file(kotlinTestJsOutputFile).parent].join(File.pathSeparator))
+////        it.workingDir = buildDir
+////    }
+////
+////    println(it.toString())
+////}
+////
+////test.dependsOn runMocha
