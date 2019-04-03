@@ -45,11 +45,12 @@ open class KotlinNativeTestTask : KotlinTestTask() {
         val extendedForkOptions = DefaultProcessForkOptions(fileResolver)
         processOptions.copyTo(extendedForkOptions)
 
-        val clientSettings = when (testsGrouping) {
-            TestsGrouping.none -> TCServiceMessagesClientSettings(rootNodeName = name)
-            TestsGrouping.root -> TCServiceMessagesClientSettings(rootNodeName = name, nameOfRootSuiteToAppend = targetName)
-            TestsGrouping.leaf -> TCServiceMessagesClientSettings(rootNodeName = name, nameOfLeafTestToAppend = targetName)
-        }.copy(treatFailedTestOutputAsStacktrace = true)
+        val clientSettings = TCServiceMessagesClientSettings(
+            name,
+            testNameSuffix = if (showTestTargetName) targetName else null,
+            prepandSuiteName = showTestTargetName,
+            treatFailedTestOutputAsStacktrace = true
+        )
 
         val cliArgs = CliArgs("TEAMCITY", includePatterns, excludePatterns)
 

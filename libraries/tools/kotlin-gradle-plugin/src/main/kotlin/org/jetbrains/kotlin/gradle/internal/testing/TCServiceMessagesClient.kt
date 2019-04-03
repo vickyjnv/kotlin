@@ -1,3 +1,8 @@
+/*
+ * Copyright 2010-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
+ */
+
 package org.jetbrains.kotlin.gradle.internal.testing
 
 import jetbrains.buildServer.messages.serviceMessages.*
@@ -16,19 +21,10 @@ import java.lang.System.currentTimeMillis as currentTimeMillis1
 
 data class TCServiceMessagesClientSettings(
     val rootNodeName: String,
-    val nameOfRootSuiteToAppend: String? = null,
-    val nameOfRootSuiteToReplace: String? = null,
-    val nameOfLeafTestToAppend: String? = null,
-    val skipRoots: Boolean = false,
+    val testNameSuffix: String? = null,
+    val prepandSuiteName: Boolean = false,
     val treatFailedTestOutputAsStacktrace: Boolean = false
-) {
-    init {
-        if (skipRoots) {
-            check(nameOfRootSuiteToReplace == null) { "nameOfRootSuiteToReplace makes no sense when skipRoots is set" }
-            check(nameOfRootSuiteToAppend == null) { "nameOfRootSuiteToAppend cannot work with skipRoots" }
-        }
-    }
-}
+)
 
 internal class TCServiceMessagesClient(
     private val results: TestResultProcessor,
@@ -36,14 +32,8 @@ internal class TCServiceMessagesClient(
     val log: Logger
 ) : ServiceMessageParserCallback {
     inline fun root(operation: OperationIdentifier, actions: () -> Unit) {
-        RootNode(operation.id).open { root ->
-            if (settings.nameOfRootSuiteToAppend != null) {
-                SuiteNode(root, settings.nameOfRootSuiteToAppend).open {
-                    actions()
-                }
-            } else {
-                actions()
-            }
+        RootNode(operation.id).open {
+            actions()
         }
     }
 
@@ -55,7 +45,7 @@ internal class TCServiceMessagesClient(
         log.kotlinDebug { "TCSM: $message" }
 
         when (message) {
-            is TestSuiteStarted -> open(message.ts, SuiteNode(leaf, hookSuiteName(leaf, message.suiteName)))
+            is TestSuiteStarted -> open(message.ts, SuiteNode(requireLeafGroup(), message.suiteName))
             is TestStarted -> beginTest(message.ts, message.testName)
             is TestStdOut -> requireLeafTest().output(StdOut, message.stdOut)
             is TestStdErr -> requireLeafTest().output(StdErr, message.stdErr)
@@ -64,20 +54,16 @@ internal class TCServiceMessagesClient(
             is TestIgnored -> {
                 if (message.attributes["suite"] == "true") {
                     // non standard property for dealing with ignored test suites without visiting all inner tests
-                    SuiteNode(requireLeaf(), message.testName).open(message.ts) { message.ts }
+                    SuiteNode(requireLeafGroup(), message.testName).open(message.ts) { message.ts }
                 } else {
                     beginTest(message.ts, message.testName, isIgnored = true)
                     endTest(message.ts, message.testName)
                 }
             }
-            is TestSuiteFinished -> close(message.ts, hookSuiteName(leaf?.parent, message.suiteName))
+            is TestSuiteFinished -> close(message.ts, message.suiteName)
             else -> Unit
         }
     }
-
-    private fun hookSuiteName(parent: Node?, originalName: String) =
-        if (parent?.parent == null && settings.nameOfRootSuiteToReplace != null) settings.nameOfRootSuiteToReplace
-        else originalName
 
     override fun regularText(text: String) {
         log.kotlinDebug { "TCSM stdout captured: $text" }
@@ -93,40 +79,29 @@ internal class TCServiceMessagesClient(
 
     private fun beginTest(ts: Long, testName: String, isIgnored: Boolean = false) {
         val parent = requireLeafGroup()
+        parent.requireReportingNode()
 
-        val parsedName = ParsedTestName(testName, parent.localId)
-
-        if (settings.nameOfLeafTestToAppend != null) {
-            val group = open(ts, SuiteNode(parent, parsedName.methodName))
-            open(
-                ts, TestNode(
-                    group, parsedName.className, parsedName.classDisplayName, parsedName.methodName,
-                    displayName = "${parsedName.methodName}.${settings.nameOfLeafTestToAppend}",
-                    localId = "$testName.${settings.nameOfLeafTestToAppend}",
-                    ignored = isIgnored
-                )
-            )
-        } else {
-            open(
-                ts, TestNode(
-                    parent, parsedName.className, parsedName.classDisplayName, parsedName.methodName,
-                    displayName = parsedName.methodName,
-                    localId = testName,
-                    ignored = isIgnored
-                )
-            )
+        val finalTestName = testName.let {
+            if (settings.prepandSuiteName) "${parent.fullNameWithoutRoot}.$it"
+            else it
         }
+
+        val parsedName = ParsedTestName(finalTestName, parent.localId)
+        val fullTestName = if (settings.testNameSuffix == null) parsedName.methodName
+        else "${parsedName.methodName}[${settings.testNameSuffix}]"
+
+        open(
+            ts, TestNode(
+                parent, parsedName.className, parsedName.classDisplayName, parsedName.methodName,
+                displayName = fullTestName,
+                localId = testName,
+                ignored = isIgnored
+            )
+        )
     }
 
     private fun endTest(ts: Long, testName: String) {
-        val parsedName = ParsedTestName(testName, leaf!!.parent!!.localId)
-
-        if (settings.nameOfLeafTestToAppend != null) {
-            close(ts, "$testName.${settings.nameOfLeafTestToAppend}")
-            close(ts, parsedName.methodName)
-        } else {
-            close(ts, testName)
-        }
+        close(ts, testName)
     }
 
     private fun TestNode.failure(
@@ -162,7 +137,6 @@ internal class TCServiceMessagesClient(
         System.currentTimeMillis()
     }
 
-
     private inline fun <NodeType : Node> NodeType.open(tsStart: Long, contents: (NodeType) -> Long) {
         val child = open(tsStart, this@open)
         val tsEnd = contents(child)
@@ -172,9 +146,7 @@ internal class TCServiceMessagesClient(
     private fun <NodeType : Node> open(ts: Long, new: NodeType): NodeType = new.also {
         log.kotlinDebug { "Test node opened: $it" }
 
-        if (!it.isSkippedRoot) {
-            results.started(it.descriptor, TestStartEvent(ts, it.reportingParent?.descriptor?.id))
-        }
+        it.markStarted(ts)
         push(it)
     }
 
@@ -182,20 +154,17 @@ internal class TCServiceMessagesClient(
         if (assertLocalId != null) {
             check(it.localId == assertLocalId) {
                 "Bad TCSM: unexpected node to close: ${it.localId}, stack: ${
-                collectParents().joinToString("") { item -> "\n - ${item.localId}" }
+                leaf.collectParents().joinToString("") { item -> "\n - ${item.localId}" }
                 }\n"
             }
         }
 
         log.kotlinDebug { "Test node closed: $it" }
-
-        if (!it.isSkippedRoot) {
-            results.completed(it.descriptor.id, TestCompleteEvent(ts, it.resultType))
-        }
+        it.markCompleted(ts)
     }
 
-    private fun collectParents(): MutableList<Node> {
-        var i = leaf
+    private fun Node?.collectParents(): MutableList<Node> {
+        var i = this
         val items = mutableListOf<Node>()
         while (i != null) {
             items.add(i)
@@ -203,6 +172,7 @@ internal class TCServiceMessagesClient(
         }
         return items
     }
+
 
     class ParsedTestName(testName: String, parentName: String) {
         val hasClassName: Boolean
@@ -226,27 +196,36 @@ internal class TCServiceMessagesClient(
         }
     }
 
+    enum class NodeState {
+        created, started, completed
+    }
 
     /**
-     * Node of tests tree
+     * Node of tests tree.
+     *
      */
     abstract inner class Node(
         var parent: Node? = null,
         val localId: String
     ) {
-        val reportingParent: Node?
-            get() = when {
-                parent == null -> null
-                parent!!.isSkippedRoot -> parent!!.reportingParent
-                else -> parent
+        val id: String = if (parent != null) "${parent!!.id}/$localId" else localId
+
+        open val cleanName: String
+            get() = localId
+
+        abstract val descriptor: TestDescriptorInternal?
+
+        var state: NodeState = NodeState.created
+
+        var reportingParent: GroupNode? = null
+            get() {
+                checkReportingNodeCreated()
+                return field
             }
 
-        val isSkippedRoot: Boolean
-            get() = settings.skipRoots && parent != null && parent!!.parent == null
-
-        val id: String = if (parent != null) "${reportingParent?.descriptor?.id}.$localId" else localId
-
-        abstract val descriptor: TestDescriptorInternal
+        private fun checkReportingNodeCreated() {
+            check(descriptor != null)
+        }
 
         var hasFailures: Boolean = false
             set(value) {
@@ -279,24 +258,121 @@ internal class TCServiceMessagesClient(
                 else -> SKIPPED
             }
 
-        override fun toString(): String = descriptor.toString()
-    }
+        override fun toString(): String = id
 
-    inner class RootNode(val ownerBuildOperationId: Any) : Node(null, settings.rootNodeName) {
-        override val descriptor =
-            object : DefaultTestSuiteDescriptor(settings.rootNodeName, localId) {
-                override fun getOwnerBuildOperationId(): Any? = this@RootNode.ownerBuildOperationId
+        abstract fun markStarted(ts: Long)
+        abstract fun markCompleted(ts: Long)
+
+        fun checkState(state: NodeState) {
+            check(this.state == state) {
+                "$this should be in state $state"
             }
+        }
+
+        protected fun reportStarted(ts: Long) {
+            checkState(NodeState.created)
+            reportingParent?.checkState(NodeState.started)
+
+            results.started(descriptor!!, TestStartEvent(ts, reportingParent?.descriptor?.id))
+
+            state = NodeState.started
+        }
+
+        protected fun reportCompleted(ts: Long) {
+            checkState(NodeState.started)
+            reportingParent?.checkState(NodeState.started)
+
+            results.completed(descriptor!!.id, TestCompleteEvent(ts, resultType))
+
+            state = NodeState.completed
+        }
     }
 
-    inner class SuiteNode(parent: Node? = null, name: String) : Node(parent, name) {
-        override val descriptor = object : DefaultTestSuiteDescriptor(id, name) {
-            override fun getParent(): TestDescriptorInternal? = this@SuiteNode.parent?.descriptor
+    abstract inner class GroupNode(parent: Node?, localId: String) : Node(parent, localId) {
+        val fullNameWithoutRoot: String
+            get() = collectParents().dropLast(1)
+                .reversed()
+                .map { it.localId }
+                .filter { it.isNotBlank() }
+                .joinToString(".") { it }
+
+        abstract fun requireReportingNode(): TestDescriptorInternal
+    }
+
+    inner class RootNode(val ownerBuildOperationId: Any) : GroupNode(null, settings.rootNodeName) {
+        override val descriptor: TestDescriptorInternal = object : DefaultTestSuiteDescriptor(settings.rootNodeName, localId) {
+            override fun getOwnerBuildOperationId(): Any? = this@RootNode.ownerBuildOperationId
+        }
+
+        override fun requireReportingNode(): TestDescriptorInternal = descriptor
+
+        override fun markStarted(ts: Long) {
+            reportStarted(ts)
+        }
+
+        override fun markCompleted(ts: Long) {
+            reportCompleted(ts)
+        }
+    }
+
+    fun cleanName(parent: GroupNode, name: String): String {
+        // Some test reporters may report test suite in name (Kotlin/Native)
+        val parentName = parent.fullNameWithoutRoot
+        return name.removePrefix("$parentName.")
+    }
+
+    inner class SuiteNode(parent: GroupNode, name: String) : GroupNode(parent, name) {
+        override val cleanName = cleanName(parent, name)
+
+        private var shouldReportComplete = false
+
+        override var descriptor: TestDescriptorInternal? = null
+            private set
+
+        override fun requireReportingNode(): TestDescriptorInternal = descriptor ?: createReportingNode()
+
+        /**
+         * Called when first test in suite started
+         */
+        private fun createReportingNode(): TestDescriptorInternal {
+            val parents = collectParents()
+            val fullName = parents.reversed()
+                .map { it.cleanName }
+                .filter { it.isNotBlank() }
+                .joinToString(".")
+
+            val reportingParent = parents.last() as RootNode
+            this.reportingParent = reportingParent
+
+            descriptor = object : DefaultTestSuiteDescriptor(id, fullName) {
+                override fun getParent(): TestDescriptorInternal? = reportingParent.descriptor
+            }
+
+            shouldReportComplete = true
+
+            check(startedTs != 0L)
+            reportStarted(startedTs)
+
+            return descriptor!!
+        }
+
+        private var startedTs: Long = 0
+
+        override fun markStarted(ts: Long) {
+            check(descriptor == null)
+            startedTs = ts
+        }
+
+        override fun markCompleted(ts: Long) {
+            if (shouldReportComplete) {
+                check(descriptor != null)
+                reportCompleted(ts)
+            }
         }
     }
 
     inner class TestNode(
-        parent: Node,
+        parent: GroupNode,
         className: String,
         classDisplayName: String,
         methodName: String,
@@ -306,8 +382,17 @@ internal class TCServiceMessagesClient(
     ) : Node(parent, localId) {
         val output by lazy { StringBuilder() }
 
-        override val descriptor = object : DefaultTestDescriptor(id, className, methodName, classDisplayName, displayName) {
-            override fun getParent(): TestDescriptorInternal? = this@TestNode.parent?.descriptor
+        override val descriptor: TestDescriptorInternal =
+            object : DefaultTestDescriptor(id, className, methodName, classDisplayName, displayName) {
+                override fun getParent(): TestDescriptorInternal? = (this@TestNode.parent as GroupNode).requireReportingNode()
+            }
+
+        override fun markStarted(ts: Long) {
+            reportStarted(ts)
+        }
+
+        override fun markCompleted(ts: Long) {
+            reportCompleted(ts)
         }
 
         init {
@@ -332,8 +417,8 @@ internal class TCServiceMessagesClient(
     }
 
     private fun requireLeaf() = leaf ?: error("test out of group")
-    private fun requireLeafGroup() = requireLeaf().also {
-        check(it !is TestNode) { "previous test `$it` not finished" }
+    private fun requireLeafGroup(): GroupNode = requireLeaf().let {
+        it as? GroupNode ?: error("previous test `$it` not finished")
     }
 
     private fun requireLeafTest() = leaf as? TestNode
