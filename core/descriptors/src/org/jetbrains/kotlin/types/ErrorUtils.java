@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.types;
 
+import kotlin.jvm.functions.Function0;
 import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -138,6 +139,21 @@ public class ErrorUtils {
             @Override
             public void assertValid() {
                 throw new InvalidModuleException("ERROR_MODULE is not a valid module");
+            }
+
+            @Override
+            @NotNull
+            public <S extends MemberScope> S getOrPutScopeForClass(
+                    @NotNull ClassDescriptor classDescriptor, @NotNull Function0<? extends S> compute) {
+                return compute.invoke();
+            }
+
+            @NotNull
+            @Override
+            public Collection<KotlinType> getOrPutSupertypesForForClass(
+                    @NotNull ClassifierDescriptor classifierDescriptor, @NotNull Function0<? extends Collection<KotlinType>> compute
+            ) {
+                return compute.invoke();
             }
         };
     }

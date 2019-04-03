@@ -17,17 +17,15 @@
 package org.jetbrains.kotlin.descriptors.impl
 
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
-import org.jetbrains.kotlin.descriptors.InvalidModuleException
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.PackageFragmentProvider
-import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.MultiTargetPlatform
+import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.storage.StorageManager
+import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.utils.sure
-import java.lang.IllegalArgumentException
 
 class ModuleDescriptorImpl @JvmOverloads constructor(
     moduleName: Name,
@@ -138,6 +136,20 @@ class ModuleDescriptorImpl @JvmOverloads constructor(
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> getCapability(capability: ModuleDescriptor.Capability<T>) = capabilities[capability] as? T
+
+
+    private val scopes = storageManager.createCacheWithNotNullValues<ClassDescriptor, MemberScope>()
+    private val supertypes = storageManager.createCacheWithNotNullValues<ClassifierDescriptor, Collection<KotlinType>>()
+
+    override fun <S : MemberScope> getOrPutScopeForClass(classDescriptor: ClassDescriptor, compute: () -> S): S {
+        @Suppress("UNCHECKED_CAST")
+        return scopes.computeIfAbsent(classDescriptor, compute) as S
+    }
+
+    override fun getOrPutSupertypesForForClass(
+        classifierDescriptor: ClassifierDescriptor,
+        compute: () -> Collection<KotlinType>
+    ): Collection<KotlinType> = supertypes.computeIfAbsent(classifierDescriptor, compute)
 }
 
 interface ModuleDependencies {

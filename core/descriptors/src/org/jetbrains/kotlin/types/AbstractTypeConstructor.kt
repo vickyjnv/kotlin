@@ -17,30 +17,30 @@
 package org.jetbrains.kotlin.types
 
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.SupertypeLoopChecker
-import org.jetbrains.kotlin.storage.MemoizedFunctionToNotNull
-import org.jetbrains.kotlin.storage.NullableLazyValue
 import org.jetbrains.kotlin.storage.StorageManager
+import org.jetbrains.kotlin.storage.getValue
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 abstract class AbstractTypeConstructor(private val storageManager: StorageManager) : TypeConstructor {
     override fun getSupertypes() = supertypes().supertypesWithoutCycles
 
-    private val supertypesByModule: NullableLazyValue<MemoizedFunctionToNotNull<ModuleDescriptor, Supertypes>> =
-        storageManager.createNullableLazyValue {
-            val allSupertypes = supertypes().allSupertypes
-            if (allSupertypes.any(KotlinType::isExpectClass)) {
-                storageManager.createMemoizedFunction { moduleDescriptor: ModuleDescriptor ->
-                    computeLazyValue(moduleDescriptor, allSupertypes).invoke()
-                }
-            } else {
-                null
-            }
-        }
+    abstract override fun getDeclarationDescriptor(): ClassifierDescriptor
+
+    private val supertypesByModule by storageManager.createLazyValue {
+        val allSupertypes = supertypes().allSupertypes
+        allSupertypes.any(KotlinType::isExpectClass)
+    }
 
     override fun getSupertypes(moduleDescriptor: ModuleDescriptor) =
-        supertypesByModule()?.invoke(moduleDescriptor)?.supertypesWithoutCycles ?: getSupertypes()
+        if (supertypesByModule)
+            moduleDescriptor.getOrPutSupertypesForForClass(declarationDescriptor) {
+                computeLazyValue(moduleDescriptor, supertypes().allSupertypes).invoke().supertypesWithoutCycles
+            }
+        else
+            getSupertypes()
 
     // In current version diagnostic about loops in supertypes is reported on each vertex (supertype reference) that lies on the cycle.
     // To achieve that we store both versions of supertypes --- before and after loops disconnection.
