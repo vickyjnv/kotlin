@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.descriptors
 
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
-import org.jetbrains.kotlin.storage.MemoizedFunctionToNotNull
 import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.storage.getValue
 import org.jetbrains.kotlin.types.TypeConstructor
@@ -21,24 +20,15 @@ class ScopesHolderForClass<T : MemberScope> private constructor(
 ) {
     private val scopeForOwnerModule by storageManager.createLazyValue { scopeFactory(classDescriptor.module) }
 
-    private val scopeOrMemoizedFunction by storageManager.createLazyValue<Any> {
-        val typeConstructor = classDescriptor.typeConstructor
-
-        if (typeConstructor.areThereExpectSupertypes())
-            storageManager.createMemoizedFunction(scopeFactory)
-        else
-            scopeForOwnerModule
+    private val scopeOrMemoizedFunction by storageManager.createLazyValue {
+        classDescriptor.typeConstructor.areThereExpectSupertypes()
     }
 
     fun getScope(moduleDescriptor: ModuleDescriptor): T {
         if (classDescriptor.module === moduleDescriptor) return scopeForOwnerModule
 
-        @Suppress("UNCHECKED_CAST")
-        return when (scopeOrMemoizedFunction) {
-            is MemoizedFunctionToNotNull<*, *> ->
-                (scopeOrMemoizedFunction as MemoizedFunctionToNotNull<ModuleDescriptor, T>).invoke(moduleDescriptor)
-            else -> scopeOrMemoizedFunction as T
-        }
+        if (!scopeOrMemoizedFunction) return scopeForOwnerModule
+        return moduleDescriptor.getOrPutScopeForClass(classDescriptor) { scopeFactory(moduleDescriptor) }
     }
 
     companion object {

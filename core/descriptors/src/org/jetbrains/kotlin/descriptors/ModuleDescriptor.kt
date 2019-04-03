@@ -19,6 +19,8 @@ package org.jetbrains.kotlin.descriptors
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.resolve.scopes.MemberScope
+import org.jetbrains.kotlin.types.KotlinType
 
 interface ModuleDescriptor : DeclarationDescriptor {
     override fun getContainingDeclaration(): DeclarationDescriptor? = null
@@ -46,6 +48,13 @@ interface ModuleDescriptor : DeclarationDescriptor {
     val allDependencyModules: List<ModuleDescriptor>
 
     val expectedByModules: List<ModuleDescriptor>
+
+    fun <S : MemberScope> getOrPutScopeForClass(classDescriptor: ClassDescriptor, compute: () -> S): S = compute()
+
+    fun getOrPutSupertypesForForClass(
+        classifierDescriptor: ClassifierDescriptor,
+        compute: () -> Collection<@JvmSuppressWildcards KotlinType>
+    ): Collection<KotlinType> = compute()
 
     fun <T> getCapability(capability: Capability<T>): T?
 
