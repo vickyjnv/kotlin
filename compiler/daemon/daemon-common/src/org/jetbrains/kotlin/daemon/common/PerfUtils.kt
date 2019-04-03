@@ -93,9 +93,9 @@ inline fun usedMemory(withGC: Boolean): Long {
 }
 
 
-inline fun<R> beginWithMeasureWallTime(perfCounters: PerfCounters) = listOf(System.nanoTime())
+inline fun beginWithMeasureWallTime() = listOf(System.nanoTime())
 
-inline fun<R> endWithMeasureWallTime(perfCounters: PerfCounters, startState: List<Long>) {
+inline fun endWithMeasureWallTime(perfCounters: PerfCounters, startState: List<Long>) {
     val (startTime) = startState
     perfCounters.addMeasurement(time = System.nanoTime() - startTime) // TODO: add support for time wrapping
 }
@@ -165,7 +165,7 @@ abstract class TotalProfiler : Profiler {
 
 
 class WallTotalProfiler : TotalProfiler() {
-    override fun beginMeasure(obj: Any?) = beginWithMeasureWallTime(total)
+    override fun beginMeasure(obj: Any?) = beginWithMeasureWallTime()
     override fun endMeasure(obj: Any?, startState: List<Long>) = endWithMeasureWallTime(total, startState)
 }
 

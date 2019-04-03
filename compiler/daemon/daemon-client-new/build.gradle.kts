@@ -32,7 +32,7 @@ val ktorExcludesForDaemon : List<Pair<String, String>> by rootProject.extra
 dependencies {
     compileOnly(project(":compiler:util"))
     compileOnly(project(":compiler:cli-common"))
-    compileOnly(project(":compiler:daemon-common-new"))
+    compileOnly(project(":daemon-common-new"))
     compileOnly(project(":kotlin-reflect-api"))
     compileOnly(project(":kotlin-daemon-client"))
     embeddedComponents(project(":kotlin-daemon-client")) { isTransitive = false }
@@ -40,7 +40,7 @@ dependencies {
     compileOnly(commonDep("net.rubygrapefruit", "native-platform"))
     compileOnly(intellijDep()) { includeIntellijCoreJarDependencies(project) }
 
-    embeddedComponents(project(":compiler:daemon-common")) { isTransitive = false }
+    embeddedComponents(project(":daemon-common")) { isTransitive = false }
     embeddedComponents(commonDep("net.rubygrapefruit", "native-platform"))
     nativePlatformVariants.forEach {
         embeddedComponents(commonDep("net.rubygrapefruit", "native-platform", "-$it"))

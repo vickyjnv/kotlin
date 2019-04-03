@@ -98,11 +98,12 @@ interface KotlinPaths {
         ScriptingLib(PathUtil.KOTLIN_SCRIPTING_COMMON_NAME),
         ScriptingJvmLib(PathUtil.KOTLIN_SCRIPTING_JVM_NAME),
         CoroutinesCore(PathUtil.KOTLINX_COROUTINES_CORE_NAME),
+        KotlinDaemon(PathUtil.KOTLIN_DAEMON_NAME),
     }
 
     enum class ClassPaths(val contents: List<Jar> = emptyList()) {
         Empty(),
-        Compiler(Jar.Compiler, Jar.StdLib, Jar.Reflect, Jar.ScriptRuntime, Jar.Trove4j),
+        Compiler(Jar.Compiler, Jar.StdLib, Jar.Reflect, Jar.ScriptRuntime, Jar.Trove4j, Jar.KotlinDaemon),
         CompilerWithScripting(Compiler, Jar.ScriptingPlugin, Jar.ScriptingImpl, Jar.ScriptingLib, Jar.ScriptingJvmLib)
         ;
 
