@@ -13,6 +13,7 @@ import org.gradle.process.ProcessForkOptions
 import org.gradle.process.internal.DefaultProcessForkOptions
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClientSettings
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
+import org.jetbrains.kotlin.gradle.targets.native.internal.parseKotlinNativeStackTraceAsJvm
 import org.jetbrains.kotlin.gradle.tasks.KotlinTestTask
 import org.jetbrains.kotlin.gradle.testing.TestsGrouping
 import java.io.File
@@ -49,7 +50,8 @@ open class KotlinNativeTestTask : KotlinTestTask() {
             name,
             testNameSuffix = if (showTestTargetName) targetName else null,
             prepandSuiteName = showTestTargetName,
-            treatFailedTestOutputAsStacktrace = true
+            treatFailedTestOutputAsStacktrace = true,
+            stackTraceParser = ::parseKotlinNativeStackTraceAsJvm
         )
 
         val cliArgs = CliArgs("TEAMCITY", includePatterns, excludePatterns)
