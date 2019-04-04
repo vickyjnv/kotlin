@@ -23,7 +23,8 @@ data class TCServiceMessagesClientSettings(
     val rootNodeName: String,
     val testNameSuffix: String? = null,
     val prepandSuiteName: Boolean = false,
-    val treatFailedTestOutputAsStacktrace: Boolean = false
+    val treatFailedTestOutputAsStacktrace: Boolean = false,
+    val stackTraceParser: (String) -> ParsedStackTrace? = { null }
 )
 
 internal class TCServiceMessagesClient(
@@ -110,7 +111,9 @@ internal class TCServiceMessagesClient(
         hasFailures = true
 
         val stacktrace = buildString {
-            append(message.stacktrace)
+            if (message.stacktrace != null) {
+                append(message.stacktrace)
+            }
 
             if (settings.treatFailedTestOutputAsStacktrace) {
                 append(output)
@@ -118,8 +121,36 @@ internal class TCServiceMessagesClient(
             }
         }
 
-        results.failure(descriptor.id, KotlinTestFailure(message.failureMessage, stacktrace))
+        val parsedStackTrace = settings.stackTraceParser(stacktrace)
+
+        results.failure(
+            descriptor.id,
+            KotlinTestFailure(
+                extractExceptionClassName(parsedStackTrace?.message ?: message.failureMessage),
+                message.failureMessage,
+                stacktrace,
+                patchStackTrace(this, parsedStackTrace?.stackTrace)
+            )
+        )
     }
+
+    private fun extractExceptionClassName(message: String): String =
+        message.substringBefore(':').trim()
+
+    /**
+     * Required for org.gradle.api.internal.tasks.testing.logging.ShortExceptionFormatter.printException
+     * In JS Stacktraces we have short class name, while filter using FQN
+     * So, let replace short class name with FQN for current test
+     */
+    private fun patchStackTrace(node: TestNode, stackTrace: List<StackTraceElement>?): List<StackTraceElement>? =
+        stackTrace?.map {
+            if (it.className == node.classDisplayName) StackTraceElement(
+                node.className,
+                it.methodName,
+                it.fileName,
+                it.lineNumber
+            ) else it
+        }
 
     private fun TestNode.output(
         destination: TestOutputEvent.Destination,
@@ -373,8 +404,8 @@ internal class TCServiceMessagesClient(
 
     inner class TestNode(
         parent: GroupNode,
-        className: String,
-        classDisplayName: String,
+        val className: String,
+        val classDisplayName: String,
         methodName: String,
         displayName: String,
         localId: String,
