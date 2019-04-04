@@ -142,13 +142,12 @@ class NameTables(packages: List<IrPackageFragment>) {
 
 
     private fun generateNamesForTopLevelDecl(declaration: IrDeclaration) {
-        val jsName = declaration.getJsName()
         when {
-            jsName != null ->
-                globalNames.declareStableName(declaration, jsName)
+            declaration !is IrDeclarationWithName ->
+                return
 
             declaration.isEffectivelyExternal() ->
-                globalNames.declareStableName(declaration, declaration.name.identifier)
+                globalNames.declareStableName(declaration, declaration.getJsNameOrKotlinName().identifier)
 
             else ->
                 globalNames.declareFreshName(declaration, declaration.name.asString())
