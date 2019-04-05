@@ -22,15 +22,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class LazySubstitutingClassDescriptor implements ClassDescriptor {
-    private final ClassDescriptor original;
+public class LazySubstitutingClassDescriptor extends ModuleAwareClassDescriptor {
+    private final ModuleAwareClassDescriptor original;
     private final TypeSubstitutor originalSubstitutor;
     private TypeSubstitutor newSubstitutor;
     private List<TypeParameterDescriptor> typeConstructorParameters;
     private List<TypeParameterDescriptor> declaredTypeParameters;
     private TypeConstructor typeConstructor;
 
-    public LazySubstitutingClassDescriptor(ClassDescriptor descriptor, TypeSubstitutor substitutor) {
+    public LazySubstitutingClassDescriptor(ModuleAwareClassDescriptor descriptor, TypeSubstitutor substitutor) {
         this.original = descriptor;
         this.originalSubstitutor = substitutor;
     }

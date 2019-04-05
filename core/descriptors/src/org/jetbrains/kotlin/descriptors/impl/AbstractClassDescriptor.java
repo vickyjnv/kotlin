@@ -34,7 +34,7 @@ import org.jetbrains.kotlin.types.*;
 
 import java.util.List;
 
-public abstract class AbstractClassDescriptor implements ClassDescriptor {
+public abstract class AbstractClassDescriptor extends ModuleAwareClassDescriptor {
     private final Name name;
     protected final NotNullLazyValue<SimpleType> defaultType;
     private final NotNullLazyValue<MemberScope> unsubstitutedInnerClassesScope;
@@ -52,7 +52,12 @@ public abstract class AbstractClassDescriptor implements ClassDescriptor {
                             public MemberScope invoke(ModuleDescriptor moduleDescriptor) {
                                 ClassDescriptor descriptor = KotlinTypeKt.refineDescriptor(AbstractClassDescriptor.this, moduleDescriptor);
                                 if (descriptor == null) return getUnsubstitutedMemberScope(moduleDescriptor);
-                                return descriptor.getUnsubstitutedMemberScope(moduleDescriptor);
+
+                                if (descriptor instanceof ModuleAwareClassDescriptor) {
+                                    return ((ModuleAwareClassDescriptor) descriptor).getUnsubstitutedMemberScope(moduleDescriptor);
+                                }
+
+                                return descriptor.getUnsubstitutedMemberScope();
                             }
                         }
                 );
