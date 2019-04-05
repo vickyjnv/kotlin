@@ -552,7 +552,10 @@ tasks {
                   ":idea:idea-gradle-native:test",
                   ":idea:idea-maven:test",
                   ":j2k:test",
-                  ":idea:eval4j:test")
+                  ":idea:jvm-debugger:jvm-debugger-core",
+                  ":idea:jvm-debugger:jvm-debugger-evaluation",
+                  ":idea:jvm-debugger:jvm-debugger-sequences",
+                  ":idea:jvm-debugger:eval4j:test")
     }
 
     create("idea-plugin-tests") {

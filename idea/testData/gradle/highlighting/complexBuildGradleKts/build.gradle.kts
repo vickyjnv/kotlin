@@ -382,7 +382,11 @@ tasks {
         dependsOn(":idea:idea-gradle:test",
                   ":idea:idea-maven:test",
                   ":j2k:test",
-                  ":idea:eval4j:test")
+                  "idea:jvm-debugger:jvm-debugger-util",
+                  "idea:jvm-debugger:jvm-debugger-core",
+                  "idea:jvm-debugger:jvm-debugger-evaluation",
+                  "idea:jvm-debugger:jvm-debugger-sequence",
+                  ":idea:jvm-debugger:eval4j:test")
     }
 
     create("idea-plugin-tests") {
