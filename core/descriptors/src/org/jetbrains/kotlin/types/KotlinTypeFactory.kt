@@ -18,6 +18,8 @@ package org.jetbrains.kotlin.types
 
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
+import org.jetbrains.kotlin.descriptors.impl.getRefinedMemberScopeIfPossible
+import org.jetbrains.kotlin.descriptors.impl.getRefinedUnsubstitutedMemberScopeIfPossible
 import org.jetbrains.kotlin.resolve.constants.IntegerLiteralTypeConstructor
 import org.jetbrains.kotlin.resolve.descriptorUtil.classId
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
@@ -46,12 +48,13 @@ object KotlinTypeFactory {
                     else
                         constructor
 
+                val moduleToUse = moduleDescriptor ?: descriptor.module
                 if (arguments.isEmpty())
-                    descriptor.defaultType.memberScope
+                    descriptor.getRefinedUnsubstitutedMemberScopeIfPossible(moduleToUse)
                 else
-                    descriptor.getMemberScope(
+                    descriptor.getRefinedMemberScopeIfPossible(
                         TypeConstructorSubstitution.create(refinedConstructor, arguments),
-                        moduleDescriptor ?: descriptor.module
+                        moduleToUse
                     )
             }
             is TypeAliasDescriptor -> ErrorUtils.createErrorScope("Scope for abbreviation: ${descriptor.name}", true)

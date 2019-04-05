@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.findClassAcrossModuleDependencies
+import org.jetbrains.kotlin.descriptors.impl.getRefinedMemberScopeIfPossible
 import org.jetbrains.kotlin.load.java.components.TypeUsage
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.renderer.DescriptorRendererOptions
@@ -144,7 +145,7 @@ internal object RawSubstitution : TypeSubstitution() {
 
             moduleDescriptor
                 .findClassAcrossModuleDependencies(classId)
-                ?.getMemberScope(RawSubstitution, moduleDescriptor) ?: memberScope
+                ?.getRefinedMemberScopeIfPossible(RawSubstitution, moduleDescriptor) ?: memberScope
         } to true
     }
 
