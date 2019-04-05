@@ -117,6 +117,14 @@ data class KotlinCompilationImpl(
     override fun toString() = name
 }
 
+data class KotlinMetadataDependencyTransformationImpl(
+    override val groupId: String?,
+    override val moduleName: String,
+    override val projectPath: String?,
+    override val allVisibleSourceSets: Set<String>,
+    override val useFilesForSourceSets: Map<String, Iterable<File>>
+): KotlinMetadataDependencyTransformation
+
 data class KotlinTargetJarImpl(
     override val archiveFile: File?
 ) : KotlinTargetJar

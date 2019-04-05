@@ -79,6 +79,16 @@ interface KotlinCompilation : KotlinModule {
     }
 }
 
+// TODO add this to KotlinSourceSet in a reasonable way
+interface KotlinMetadataDependencyTransformation {
+    val groupId: String?
+    val moduleName: String
+    val projectPath: String?
+    val allVisibleSourceSets: Set<String>
+    val useFilesForSourceSets: Map<String, Iterable<File>>
+    //TODO val projectStructureMetadata: KotlinProjectStructureMetadata?
+}
+
 enum class KotlinPlatform(val id: String) {
     COMMON("common"),
     JVM("jvm"),
