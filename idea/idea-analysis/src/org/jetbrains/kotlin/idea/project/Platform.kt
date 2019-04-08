@@ -148,6 +148,7 @@ fun Project.getLanguageVersionSettings(
 
     val extraAnalysisFlags = additionalArguments.configureAnalysisFlags(MessageCollector.NONE).apply {
         if (jsr305State != null) put(JvmAnalysisFlags.jsr305, jsr305State)
+        put(AnalysisFlags.useTypeRefinement, true)
     }
 
     return LanguageVersionSettingsImpl(
@@ -196,7 +197,11 @@ private fun Module.computeLanguageVersionSettings(): LanguageVersionSettings {
         configureMultiplatformSupport(facetSettings.platform?.kind, this@computeLanguageVersionSettings)
     }.orEmpty()
 
-    val analysisFlags = facetSettings.mergedCompilerArguments?.configureAnalysisFlags(MessageCollector.NONE).orEmpty()
+    val analysisFlags = facetSettings
+        .mergedCompilerArguments
+        ?.configureAnalysisFlags(MessageCollector.NONE)
+        ?.apply { put(AnalysisFlags.useTypeRefinement, true) }
+        .orEmpty()
 
     return LanguageVersionSettingsImpl(
         languageVersion,
