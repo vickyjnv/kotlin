@@ -5,8 +5,10 @@
 
 package org.jetbrains.kotlin.config
 
+import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.types.typeUtil.refinedSupertypesIfNeeded
 
 fun KotlinType.refineTypeIfNeeded(
     moduleDescriptor: ModuleDescriptor,
@@ -16,3 +18,8 @@ fun KotlinType.refineTypeIfNeeded(
 
     return refine(moduleDescriptor)
 }
+
+fun ClassDescriptor.refinedSupertypesIfNeeded(
+    moduleDescriptor: ModuleDescriptor,
+    languageVersionSettings: LanguageVersionSettings
+): Collection<KotlinType> = refinedSupertypesIfNeeded(moduleDescriptor, languageVersionSettings.getFlag(AnalysisFlags.useTypeRefinement))
