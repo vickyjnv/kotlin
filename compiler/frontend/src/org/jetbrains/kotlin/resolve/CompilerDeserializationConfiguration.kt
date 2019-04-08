@@ -24,4 +24,6 @@ class CompilerDeserializationConfiguration(languageVersionSettings: LanguageVers
     override val readDeserializedContracts: Boolean = languageVersionSettings.supportsFeature(LanguageFeature.ReadDeserializedContracts)
 
     override val releaseCoroutines: Boolean = languageVersionSettings.supportsFeature(LanguageFeature.ReleaseCoroutines)
+
+    override val useRefineTypes: Boolean = languageVersionSettings.getFlag(AnalysisFlags.useTypeRefinement)
 }

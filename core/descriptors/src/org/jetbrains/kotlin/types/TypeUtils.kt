@@ -252,3 +252,12 @@ fun KotlinType.expandIntersectionTypeIfNecessary(): Collection<KotlinType> {
         types
     }
 }
+
+fun ClassDescriptor.refinedSupertypesIfNeeded(
+    moduleDescriptor: ModuleDescriptor,
+    refine: Boolean
+): Collection<KotlinType> {
+    if (!refine) return typeConstructor.supertypes
+
+    return typeConstructor.getSupertypes(moduleDescriptor)
+}
