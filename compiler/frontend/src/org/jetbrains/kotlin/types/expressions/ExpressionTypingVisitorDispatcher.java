@@ -10,6 +10,7 @@ import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.IndexNotReadyException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.config.TypeRefinementKt;
 import org.jetbrains.kotlin.diagnostics.Errors;
 import org.jetbrains.kotlin.diagnostics.PsiDiagnosticUtils;
 import org.jetbrains.kotlin.incremental.components.LookupTracker;
@@ -184,7 +185,9 @@ public abstract class ExpressionTypingVisitorDispatcher extends KtVisitor<Kotlin
 
                     KotlinType refinedType =
                             result.getType() != null
-                            ? result.getType().refine(components.moduleDescriptor)
+                            ? TypeRefinementKt.refineTypeIfNeeded(
+                                    result.getType(), components.moduleDescriptor, components.languageVersionSettings
+                            )
                             : null;
 
                     if (refinedType != result.getType()) {
