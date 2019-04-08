@@ -24,6 +24,7 @@ import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.SmartHashSet
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.config.refinedSupertypesIfNeeded
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.DELEGATION
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.FAKE_OVERRIDE
@@ -36,7 +37,6 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.DescriptorUtils.classCanHaveAbstractFakeOverride
 import org.jetbrains.kotlin.resolve.OverridingUtil.OverrideCompatibilityInfo.Result.OVERRIDABLE
 import org.jetbrains.kotlin.resolve.calls.callResolverUtil.isOrOverridesSynthesized
-import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
 import org.jetbrains.kotlin.utils.addToStdlib.assertedCast
@@ -45,7 +45,8 @@ import java.util.*
 class OverrideResolver(
     private val trace: BindingTrace,
     private val overridesBackwardCompatibilityHelper: OverridesBackwardCompatibilityHelper,
-    private val languageVersionSettings: LanguageVersionSettings
+    private val languageVersionSettings: LanguageVersionSettings,
+    private val moduleDescriptor: ModuleDescriptor
 ) {
 
     fun check(c: TopDownAnalysisContext) {
@@ -271,7 +272,8 @@ class OverrideResolver(
         val overriddenDescriptors = declared.overriddenDescriptors
 
         if (hasOverrideNode) {
-            checkOverridesForMemberMarkedOverride(declared, object : CheckOverrideReportForDeclaredMemberStrategy {
+            checkOverridesForMemberMarkedOverride(
+                declared, moduleDescriptor, languageVersionSettings, object : CheckOverrideReportForDeclaredMemberStrategy {
                 private var finalOverriddenError = false
                 private var typeMismatchError = false
                 private var kindMismatchError = false
@@ -754,6 +756,8 @@ class OverrideResolver(
 
         private fun checkOverridesForMemberMarkedOverride(
             declared: CallableMemberDescriptor,
+            moduleDescriptor: ModuleDescriptor,
+            languageVersionSettings: LanguageVersionSettings,
             reportError: CheckOverrideReportForDeclaredMemberStrategy
         ) {
             val overriddenDescriptors = declared.overriddenDescriptors
@@ -766,7 +770,8 @@ class OverrideResolver(
                     "Overrides may only be resolved in a class, but $declared comes from $containingDeclaration"
                 }
 
-                val invisibleOverriddenDescriptor = findInvisibleOverriddenDescriptor(declared, declaringClass)
+                val invisibleOverriddenDescriptor =
+                    findInvisibleOverriddenDescriptor(declared, declaringClass, moduleDescriptor, languageVersionSettings)
                 if (invisibleOverriddenDescriptor != null) {
                     reportError.cannotOverrideInvisibleMember(declared, invisibleOverriddenDescriptor)
                 } else {
@@ -864,9 +869,11 @@ class OverrideResolver(
 
         private fun findInvisibleOverriddenDescriptor(
             declared: CallableMemberDescriptor,
-            declaringClass: ClassDescriptor
+            declaringClass: ClassDescriptor,
+            moduleDescriptor: ModuleDescriptor,
+            languageVersionSettings: LanguageVersionSettings
         ): CallableMemberDescriptor? {
-            for (supertype in declaringClass.typeConstructor.getSupertypes(declaringClass.module)) {
+            for (supertype in declaringClass.refinedSupertypesIfNeeded(moduleDescriptor, languageVersionSettings)) {
                 val all = linkedSetOf<CallableMemberDescriptor>()
                 all.addAll(supertype.memberScope.getContributedFunctions(declared.name, NoLookupLocation.WHEN_CHECK_OVERRIDES))
                 all.addAll(supertype.memberScope.getContributedVariables(declared.name, NoLookupLocation.WHEN_CHECK_OVERRIDES))

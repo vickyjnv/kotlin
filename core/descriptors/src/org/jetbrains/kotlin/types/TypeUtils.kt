@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.calls.inference.isCaptured
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
 import org.jetbrains.kotlin.types.checker.NewCapturedType
@@ -251,4 +252,13 @@ fun KotlinType.expandIntersectionTypeIfNecessary(): Collection<KotlinType> {
     } else {
         types
     }
+}
+
+fun ClassDescriptor.refinedSupertypesIfNeeded(
+    moduleDescriptor: ModuleDescriptor,
+    refine: Boolean
+): Collection<KotlinType> {
+    if (!refine || this.module == moduleDescriptor) return typeConstructor.supertypes
+
+    return typeConstructor.getSupertypes(moduleDescriptor)
 }

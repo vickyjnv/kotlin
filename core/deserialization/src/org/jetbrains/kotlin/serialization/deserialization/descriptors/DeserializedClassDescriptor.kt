@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.serialization.deserialization.*
 import org.jetbrains.kotlin.types.AbstractClassTypeConstructor
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeConstructor
+import org.jetbrains.kotlin.types.typeUtil.refinedSupertypesIfNeeded
 import java.util.*
 
 class DeserializedClassDescriptor(
@@ -231,7 +232,7 @@ class DeserializedClassDescriptor(
 
         override fun computeNonDeclaredFunctions(name: Name, functions: MutableCollection<SimpleFunctionDescriptor>) {
             val fromSupertypes = ArrayList<SimpleFunctionDescriptor>()
-            for (supertype in classDescriptor.getTypeConstructor().getSupertypes(moduleDescriptor)) {
+            for (supertype in classDescriptor.refinedSupertypesIfNeeded(moduleDescriptor, c.components.configuration.useRefineTypes)) {
                 fromSupertypes.addAll(supertype.memberScope.getContributedFunctions(name, NoLookupLocation.FOR_ALREADY_TRACKED))
             }
 
@@ -245,7 +246,7 @@ class DeserializedClassDescriptor(
 
         override fun computeNonDeclaredProperties(name: Name, descriptors: MutableCollection<PropertyDescriptor>) {
             val fromSupertypes = ArrayList<PropertyDescriptor>()
-            for (supertype in classDescriptor.getTypeConstructor().getSupertypes(moduleDescriptor)) {
+            for (supertype in classDescriptor.refinedSupertypesIfNeeded(moduleDescriptor, c.components.configuration.useRefineTypes)) {
                 fromSupertypes.addAll(supertype.memberScope.getContributedVariables(name, NoLookupLocation.FOR_ALREADY_TRACKED))
             }
             generateFakeOverrides(name, fromSupertypes, descriptors)
