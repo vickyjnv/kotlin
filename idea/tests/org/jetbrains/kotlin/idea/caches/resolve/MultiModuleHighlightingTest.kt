@@ -179,6 +179,37 @@ open class MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
         checkHighlightingInProject()
     }
 
+    fun testTypesRefinement() {
+        val d1 = module("d1")
+        val d2 = module("d2")
+        val d3 = module("d3")
+        val d4 = module("d4")
+
+        d3.addDependency(d1)
+        d4.addDependency(d2)
+        d4.addDependency(d3)
+
+        checkHighlightingInProject()
+    }
+
+    fun testTypesRefinementSupertypes() {
+        val d0 = module("d0")
+        val d1 = module("d1")
+        val d2 = module("d2")
+        val d3 = module("d3")
+        val d4 = module("d4")
+
+        d3.addDependency(d1)
+
+        d2.addDependency(d0)
+
+        d4.addDependency(d0)
+        d4.addDependency(d2)
+        d4.addDependency(d3)
+
+        checkHighlightingInProject()
+    }
+
     fun testLanguageVersionsViaFacets() {
         val m1 = module("m1", FULL_JDK).setupKotlinFacet {
             settings.languageLevel = LanguageVersion.KOTLIN_1_1
