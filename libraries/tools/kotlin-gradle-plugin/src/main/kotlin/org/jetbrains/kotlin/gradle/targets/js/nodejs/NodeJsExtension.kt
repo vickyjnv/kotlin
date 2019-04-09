@@ -3,6 +3,9 @@ package org.jetbrains.kotlin.gradle.targets.js.nodejs
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.logging.kotlinInfo
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmApi
+import org.jetbrains.kotlin.gradle.targets.js.npm.PackageJson
+import org.jetbrains.kotlin.gradle.targets.js.yarn.Yarn
 import java.io.File
 
 open class NodeJsExtension(project: Project) {
@@ -14,12 +17,19 @@ open class NodeJsExtension(project: Project) {
 
     var distBaseUrl = "https://nodejs.org/dist"
     var version = "10.15.3"
-    var npmVersion = ""
 
     var nodeCommand = "node"
     var npmCommand = "npm"
 
     var download = true
+
+    var packageManager: NpmApi = Yarn
+
+    internal val packageJsonHandlers = mutableListOf<PackageJson.() -> Unit>()
+
+    fun packageJson(handler: PackageJson.() -> Unit) {
+        packageJsonHandlers.add(handler)
+    }
 
     internal fun buildEnv(): NodeJsEnv {
         val platform = NodeJsPlatform.name
@@ -40,13 +50,13 @@ open class NodeJsExtension(project: Project) {
         }
 
         return NodeJsEnv(
-                nodeDir = nodeDir,
-                nodeBinDir = nodeBinDir,
-                nodeExec = getExecutable("node", nodeCommand, "exe"),
-                npmExec = getExecutable("npm", npmCommand, "cmd"),
-                platformName = platform,
-                architectureName = architecture,
-                ivyDependency = getIvyDependency()
+            nodeDir = nodeDir,
+            nodeBinDir = nodeBinDir,
+            nodeExec = getExecutable("node", nodeCommand, "exe"),
+            npmExec = getExecutable("npm", npmCommand, "cmd"),
+            platformName = platform,
+            architectureName = architecture,
+            ivyDependency = getIvyDependency()
         )
     }
 

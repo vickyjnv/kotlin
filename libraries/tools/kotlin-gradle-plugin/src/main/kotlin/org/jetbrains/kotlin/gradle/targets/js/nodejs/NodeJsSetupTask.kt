@@ -19,18 +19,21 @@ open class NodeJsSetupTask : DefaultTask() {
         description = "Download and install a local node/npm version."
     }
 
-    val input: Set<String>
-        @Input get() = setOf(settings.download.toString(), env.ivyDependency)
+    val ivyDependency: String
+        @Input get() = env.ivyDependency
 
     val destination: File
         @OutputDirectory get() = env.nodeDir
 
+    init {
+        onlyIf {
+            settings.download && !env.nodeBinDir.isDirectory
+        }
+    }
+
     @Suppress("unused")
     @TaskAction
     fun exec() {
-        if (!settings.download)
-            return
-
         @Suppress("UnstableApiUsage", "DEPRECATION")
         val repo = project.repositories.ivy { repo ->
             repo.name = "Node Distributions at ${settings.distBaseUrl}"
