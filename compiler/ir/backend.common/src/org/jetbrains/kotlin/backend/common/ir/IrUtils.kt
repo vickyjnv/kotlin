@@ -212,20 +212,31 @@ private fun IrTypeParameter.copySuperTypesFrom(source: IrTypeParameter) {
     }
 }
 
+// Copy value parameters, dispatch receiver, and extension receiver from source to value parameters of this function.
+// Type of dispatch receiver defaults to source's dispatch receiver. It is overridable in case the new function and the old one are used in
+// different contexts and expect different type of dispatch receivers. The overriding type should be assign compatible to the old type.
 fun IrFunction.copyValueParametersToStatic(
     source: IrFunction,
-    origin: IrDeclarationOrigin
+    origin: IrDeclarationOrigin,
+    dispatchReceiverType: IrType? = null
 ) {
     val target = this
     assert(target.valueParameters.isEmpty())
 
     var shift = 0
     source.dispatchReceiverParameter?.let { p ->
+        assert(dispatchReceiverType?.isSubtypeOfClass(p.type.classOrNull!!) != false)
+        val type = (dispatchReceiverType ?: p.type).remapTypeParameters(
+            ((dispatchReceiverType?.let { target } ?: p).parent as IrTypeParametersContainer).classIfConstructor,
+            target.classIfConstructor
+        )
+
         target.valueParameters.add(
             p.copyTo(
                 target,
                 origin = p.origin,
                 index = p.index + shift++,
+                type = type,
                 name = Name.identifier("\$this")
             )
         )
