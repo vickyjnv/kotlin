@@ -43,12 +43,6 @@ internal class KotlinJsCompilationTestsConfigurator(
     private val testTaskName: String
         get() = disambiguateCamelCased("test", false)
 
-    private val nodeModulesDir
-        get() = project.buildDir.resolve(disambiguateUnderscored("node_modules", true))
-
-    private val compileTask: Kotlin2JsCompile
-        get() = project.tasks.findByName(compileTestKotlin2Js.name) as Kotlin2JsCompile
-
     private val Kotlin2JsCompile.jsRuntimeClasspath: FileCollection
         get() = classpath.plus(project.files(destinationDir))
 
@@ -57,27 +51,12 @@ internal class KotlinJsCompilationTestsConfigurator(
             implementation(kotlin("test-nodejs-runner"))
         }
 
-        val nodeModulesTask = registerTask(
-            project,
-            disambiguateCamelCased("nodeModules", true),
-            KotlinJsNodeModulesTask::class.java
-        ) {
-            it.dependsOn(compileTestKotlin2Js)
-
-            it.onlyIf {
-                compileTestKotlin2Js.outputFile.exists()
-            }
-
-            it.nodeModulesDir = nodeModulesDir
-            it.classpath = compileTask.jsRuntimeClasspath
-        }
-
         val projectWithNodeJsPlugin = NodeJsPlugin.ensureAppliedInHierarchy(target.project)
 
         val testTask = registerTask(project, testTaskName, KotlinNodeJsTestTask::class.java) { testJs ->
             testJs.group = LifecycleBasePlugin.VERIFICATION_GROUP
 
-            testJs.dependsOn(nodeModulesTask.getTaskOrProvider())
+            testJs.dependsOn(compileTestKotlin2Js)
 
             testJs.onlyIf {
                 compileTestKotlin2Js.outputFile.exists()
@@ -90,7 +69,7 @@ internal class KotlinJsCompilationTestsConfigurator(
 
             testJs.nodeJsProcessOptions.workingDir = project.projectDir
 
-            testJs.nodeModulesDir = nodeModulesDir
+            testJs.nodeModulesDir = project.rootDir.resolve("node_modules")
             testJs.testRuntimeNodeModules = listOf(
                 "kotlin-test-nodejs-runner.js",
                 "kotlin-nodejs-source-map-support.js"
