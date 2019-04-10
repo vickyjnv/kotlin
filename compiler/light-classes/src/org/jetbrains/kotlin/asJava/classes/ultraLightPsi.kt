@@ -417,7 +417,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
     override fun getOwnMethods(): List<KtLightMethod> = if (tooComplex) super.getOwnMethods() else _ownMethods
 
     private fun asJavaMethods(ktFunction: KtFunction, forceStatic: Boolean, forcePrivate: Boolean = false): Collection<KtLightMethod> {
-        if (ktFunction.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME)) return emptyList()
+        if (ktFunction.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME) || ktFunction.isInlineWithReified()) return emptyList()
 
         val basicMethod = asJavaMethod(ktFunction, forceStatic, forcePrivate)
 
@@ -653,6 +653,9 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
                 !declaration.hasModifier(OVERRIDE_KEYWORD) &&
                 !declaration.hasModifier(ABSTRACT_KEYWORD)
     }
+
+    private fun KtFunction.isInlineWithReified(): Boolean =
+        hasModifier(INLINE_KEYWORD) && typeParameters.any { it.hasModifier(REIFIED_KEYWORD) }
 
     override fun getInitializers(): Array<PsiClassInitializer> = emptyArray()
 
