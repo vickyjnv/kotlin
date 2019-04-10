@@ -11,11 +11,11 @@ import java.io.File
 import java.net.URI
 
 open class NodeJsSetupTask : DefaultTask() {
-    private val settings = NodeJsExtension[project]
+    private val settings = NodeJsRootExtension[project]
     private val env by lazy { settings.buildEnv() }
 
     init {
-        group = NodeJsExtension.NODE_JS
+        group = NodeJsRootExtension.NODE_JS
         description = "Download and install a local node/npm version."
     }
 
@@ -36,8 +36,8 @@ open class NodeJsSetupTask : DefaultTask() {
     fun exec() {
         @Suppress("UnstableApiUsage", "DEPRECATION")
         val repo = project.repositories.ivy { repo ->
-            repo.name = "Node Distributions at ${settings.distBaseUrl}"
-            repo.url = URI(settings.distBaseUrl)
+            repo.name = "Node Distributions at ${settings.nodeDownloadBaseUrl}"
+            repo.url = URI(settings.nodeDownloadBaseUrl)
 
             if (isGradleVersionAtLeast(5, 0)) {
                 repo.patternLayout { layout ->

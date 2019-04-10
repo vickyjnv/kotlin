@@ -9,12 +9,12 @@ import de.undercouch.gradle.tasks.download.DownloadAction
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsExtension
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension
 import java.io.File
 import javax.xml.ws.Action
 
 open class YarnSetupTask : DefaultTask() {
-    private val settings = YarnExtension[project]
+    private val settings = YarnRootExtension[project]
     private val env by lazy { settings.buildEnv() }
 
     @Suppress("MemberVisibilityCanBePrivate")
@@ -26,11 +26,11 @@ open class YarnSetupTask : DefaultTask() {
         @OutputDirectory get() = env.home
 
     init {
-        group = NodeJsExtension.NODE_JS
+        group = NodeJsRootExtension.NODE_JS
         description = "Download and install a local yarn version."
 
         onlyIf {
-            settings.download && !settings.installationDir.exists()
+            !settings.installationDir.exists()
         }
     }
 

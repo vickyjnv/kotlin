@@ -9,5 +9,26 @@ import org.gradle.api.Project
 
 interface NpmApi {
     fun setup(project: Project)
-    fun resolveRootProject(project: Project)
+
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    fun resolveProject(npmPackage: NpmResolver.NpmPackage)
+
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    fun resolveRootProject(
+        rootProject: Project,
+        subprojects: MutableList<NpmResolver.NpmPackage>
+    )
+
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    fun hookRootPackage(rootProject: Project, rootPackageJson: PackageJson, allWorkspaces: Collection<NpmResolver.NpmPackage>) {
+
+    }
+
+    open val hoistGradleNodeModules
+        get() = false
+
+    companion object {
+        fun resolveOperationDescription(packageManagerTitle: String): String =
+            "Resolving NPM dependencies using $packageManagerTitle"
+    }
 }

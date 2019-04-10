@@ -14,6 +14,7 @@ import org.gradle.api.internal.artifacts.dependencies.SelfResolvingDependencyInt
 import org.gradle.api.tasks.TaskDependency
 import java.io.File
 import org.gradle.internal.component.local.model.DefaultLibraryBinaryIdentifier
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver.ResolutionCallResult.*
 
 data class NpmDependency(
     private val project: Project,
@@ -29,15 +30,15 @@ data class NpmDependency(
         val result = NpmResolver.resolve(project)
 
         return when (result) {
-            is NpmResolver.ResolutionCallResult.AlreadyInProgress -> mutableSetOf()
-            is NpmResolver.ResolutionCallResult.AlreadyResolved -> {
+            is AlreadyInProgress -> mutableSetOf()
+            is AlreadyResolved -> {
                 check(this in result.resolution.dependencies) {
                     "Project hierarchy is already resolved in NPM without $this"
                 }
 
                 tryFindNodeModule()
             }
-            is NpmResolver.ResolutionCallResult.ResolvedNow -> {
+            is ResolvedNow -> {
                 check(this in result.resolution.dependencies) {
                     "$this was not visited during resolution"
                 }
@@ -57,6 +58,8 @@ data class NpmDependency(
     }
 
     val key: String = if (org == null) name else "@$org/$name"
+
+    override fun toString() = "$key: $version"
 
     override fun resolve(transitive: Boolean): MutableSet<File> = resolve()
 

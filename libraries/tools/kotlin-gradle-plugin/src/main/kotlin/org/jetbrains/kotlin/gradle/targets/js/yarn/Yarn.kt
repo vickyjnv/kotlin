@@ -6,79 +6,78 @@
 package org.jetbrains.kotlin.gradle.targets.js.yarn
 
 import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
-import org.gradle.internal.logging.events.ProgressStartEvent
-import org.gradle.process.internal.ExecActionFactory
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsExtension
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJsSetupWithoutTasks
+import org.jetbrains.kotlin.gradle.internal.execWithProgress
+import org.jetbrains.kotlin.gradle.internal.operation
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmApi
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver
+import org.jetbrains.kotlin.gradle.targets.js.npm.PackageJson
 import org.slf4j.LoggerFactory
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
-import kotlin.concurrent.thread
 
 object Yarn : NpmApi {
     private val log = LoggerFactory.getLogger("org.jetbrains.kotlin.gradle.targets.js.yarn.Yarn")
 
     override fun setup(project: Project) {
-        nodeJsSetupWithoutTasks(project)
+        YarnPlugin[project].executeSetup()
+    }
 
-        val yarnProject = YarnPlugin.ensureAppliedInHierarchy(project)
-        val yarn = YarnExtension[yarnProject]
-        val yarnEnv = yarn.buildEnv()
-        if (yarn.download) {
-            if (!yarnEnv.home.isDirectory) {
-                (yarnProject.tasks.findByName(YarnSetupTask.NAME) as YarnSetupTask).setup()
-            }
+    fun yarnExec(
+        project: Project,
+        description: String,
+        vararg args: String,
+        npmProjectLayout: NpmProjectLayout = NpmProjectLayout[project]
+    ) {
+        val nodeJsEnv = NodeJsPlugin[project].buildEnv()
+        val yarnEnv = YarnPlugin[project].buildEnv()
+
+        project.execWithProgress(description) { exec ->
+            exec.executable = nodeJsEnv.nodeExec
+            exec.args = listOf(yarnEnv.home.resolve("bin/yarn.js").absolutePath) + args
+            exec.workingDir = npmProjectLayout.nodeWorkDir
         }
     }
 
-    fun execute(project: Project, workingDir: File = project.rootDir, vararg args: String) {
-        val nodeJs = NodeJsExtension[project]
-        val nodeJsEnv = nodeJs.buildEnv()
-
-        val yarn = YarnExtension[project]
-        val yarnEnv = yarn.buildEnv()
-
-        val stderr = ByteArrayOutputStream()
-        val stdout = StringBuilder()
-        val stdInPipe = PipedInputStream()
-        val services = (project as ProjectInternal).services
-        val exec = services.get(ExecActionFactory::class.java).newExecAction()
-        val progressFactory = services.get(org.gradle.internal.logging.progress.ProgressLoggerFactory::class.java)
-        val op = progressFactory.newOperation(ProgressStartEvent.BUILD_OP_CATEGORY)
-        op.start("Resolving NPM dependencies using yarn", "")
-        exec.executable = nodeJsEnv.nodeExec
-        exec.args = listOf(yarnEnv.home.resolve("bin/yarn.js").absolutePath) + args
-        exec.workingDir = workingDir
-        exec.errorOutput = stderr
-        exec.standardOutput = PipedOutputStream(stdInPipe)
-        val outputReaderThread = thread(name = "yarn output reader") {
-            try {
-                stdInPipe.reader().useLines { lines ->
-                    lines.forEach {
-                        stdout.appendln(it)
-                        op.progress(it)
-                    }
-                }
-            } catch (t: Throwable) {
-                log.error("Error creating TCServiceMessagesClient", t)
-            }
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    override fun resolveProject(npmPackage: NpmResolver.NpmPackage) {
+        val project = npmPackage.project
+        if (!YarnPlugin[project].checkUseWorkspace()) {
+            yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
         }
-        exec.isIgnoreExitValue = true
-        if (exec.execute().exitValue != 0) {
-            println("Yarn failed to resolve NPM dependencies:")
-            stderr.writeTo(System.err)
-            System.out.print(stdout.toString())
-        }
-        outputReaderThread.join()
-
-        op.completed()
     }
 
-    override fun resolveRootProject(project: Project) {
-        execute(project)
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    override fun hookRootPackage(rootProject: Project, rootPackageJson: PackageJson, allWorkspaces: Collection<NpmResolver.NpmPackage>) {
+        if (YarnPlugin[rootProject].checkUseWorkspace()) {
+            rootPackageJson.private = true
+            rootPackageJson.workspaces = allWorkspaces
+                .filter { it.project != rootProject }
+                .map { it.project.rootDir.relativeTo(rootProject.rootDir).path }
+        }
+    }
+
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    override fun resolveRootProject(
+        rootProject: Project,
+        subprojects: MutableList<NpmResolver.NpmPackage>
+    ) {
+        check(rootProject == rootProject.rootProject)
+
+        if (YarnPlugin[rootProject].checkUseWorkspace()) {
+            yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
+        } else {
+            if (subprojects.any { it.project != rootProject }) {
+                // todo: proofread message
+                rootProject.logger.warn(
+                    "Build contains sub projects with NPM dependencies. " +
+                            "It is recommended to enable yarn workspaces to store common NPM dependencies in root project. " +
+                            "To enable it add this to your root project: \n" +
+                            "nodeJs { manageNodeModules = true } \n" +
+                            "yarn { useWorkspaces = true } \n" +
+                            "Note: with `manageNodeModules` enabled, your `node_modules` and `package.json` files will be managed by " +
+                            "Gradle, will be overridden during build and should be ignored in VCS."
+                )
+            }
+        }
     }
 }

@@ -6,10 +6,15 @@
 package org.jetbrains.kotlin.gradle.targets.js.npm
 
 class PackageJson(
-    val name: String,
-    val version: String
+    var name: String,
+    var version: String
 ) {
+    val empty: Boolean
+        get() = private == null && workspaces == null && dependencies.isEmpty()
+
     var private: Boolean? = null
+
     var workspaces: Collection<String>? = null
+
     val dependencies = mutableMapOf<String, String>()
 }
