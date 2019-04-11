@@ -11,5 +11,5 @@ fun main(args: Array<String>) {
     println("Generating...")
 
     val copyrightNotice = readCopyrightNoticeFromProfile(File("../../../.idea/copyright/apache.xml"))
-    webIdl.jsGenerator(File("../../stdlib/js/src/org.w3c"), copyrightNotice)
+    webIdl.jsGenerator(File("../../stdlib/js-v1/src/org.w3c"), copyrightNotice)
 }
