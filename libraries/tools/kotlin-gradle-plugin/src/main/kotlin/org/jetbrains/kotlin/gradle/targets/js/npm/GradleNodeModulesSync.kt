@@ -8,12 +8,14 @@ package org.jetbrains.kotlin.gradle.targets.js.npm
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParseException
 import org.gradle.api.Project
+import org.gradle.api.file.CopySpec
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.internal.hash.FileHasher
 import org.jetbrains.kotlin.daemon.common.toHexString
 import org.jetbrains.kotlin.gradle.dsl.KotlinCommonOptions
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
-import org.jetbrains.kotlin.gradle.targets.js.npm.GradleNodeModulesSync.*
+import org.jetbrains.kotlin.gradle.targets.js.internal.RewriteSourceMapFilterReader
+import org.jetbrains.kotlin.gradle.targets.js.npm.GradleNodeModulesSync.Element
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout.Companion.PACKAGE_JSON
 import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 import java.io.File
@@ -111,6 +113,8 @@ internal class GradleNodeModulesSync(val project: Project) {
 
     private val stateFile = nodeModulesDir.resolve(STATE_FILE_NAME)
 
+    private val doLast = mutableListOf<() -> Unit>()
+
     fun loadOldState() {
         val state: State? = if (stateFile.isFile) try {
             stateFile.reader().use {
@@ -150,12 +154,15 @@ internal class GradleNodeModulesSync(val project: Project) {
                     copy.from(new.contents[key]!!.files)
                 }
                 copy.into(nodeModulesDir)
+                copy.withSourceMapRewriter()
             }
         }
 
         if (deleted.isNotEmpty() || absented.isNotEmpty()) {
             saveNewState()
         }
+
+        doLast.forEach { it() }
     }
 
     private fun saveNewState() {
@@ -202,11 +209,14 @@ internal class GradleNodeModulesSync(val project: Project) {
         }
 
         // output
-        if (kotlin2JsCompile.state.executed) {
-            copyCompileOutput(project, kotlin2JsCompile)
-        } else {
-            kotlin2JsCompile.doLast {
+        doLast.add {
+            // we should do it only after node package manger work (as it can clean files)
+            if (kotlin2JsCompile.state.executed) {
                 copyCompileOutput(project, kotlin2JsCompile)
+            } else {
+                kotlin2JsCompile.doLast {
+                    copyCompileOutput(project, kotlin2JsCompile)
+                }
             }
         }
 
@@ -218,6 +228,21 @@ internal class GradleNodeModulesSync(val project: Project) {
             copy.from(kotlin2JsCompile.outputFile)
             copy.from(kotlin2JsCompile.outputFile.path + ".map")
             copy.into(nodeModulesDir)
+            copy.withSourceMapRewriter()
+        }
+    }
+
+    private fun CopySpec.withSourceMapRewriter() {
+        eachFile {
+            if (it.name.endsWith(".js.map")) {
+                it.filter(
+                    mapOf(
+                        "srcSourceRoot" to it.file.parentFile,
+                        "targetSourceRoot" to nodeModulesDir
+                    ),
+                    RewriteSourceMapFilterReader::class.java
+                )
+            }
         }
     }
 
