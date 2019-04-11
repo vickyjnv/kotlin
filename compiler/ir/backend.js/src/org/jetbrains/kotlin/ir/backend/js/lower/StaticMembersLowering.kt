@@ -41,10 +41,9 @@ class StaticMembersLowering(val context: JsIrBackendContext) : FileLoweringPass 
 
         for (declaration in staticDeclarationsInClasses) {
             val klass = declaration.parentAsClass
-            val fragment = klass.getPackageFragment()!!
             klass.declarations.remove(declaration)
-            fragment.addChild(declaration)
-            declaration.parent = fragment
+            irFile.addChild(declaration)
+            declaration.parent = irFile
         }
     }
 }

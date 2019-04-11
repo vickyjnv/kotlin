@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.backend.js.utils
 
 import org.jetbrains.kotlin.backend.common.ir.isTopLevel
-import org.jetbrains.kotlin.backend.common.serialization.name
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.*
@@ -16,6 +15,7 @@ import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.util.isInlined
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.js.backend.ast.JsName
 import org.jetbrains.kotlin.js.backend.ast.JsScope
 import org.jetbrains.kotlin.js.naming.isES5IdentifierPart
@@ -98,12 +98,20 @@ class NameTables(packages: List<IrPackageFragment>) {
                 if (declaration.isEffectivelyExternal())
                     continue
 
+                val localNameGenerator = LocalNameGenerator(declaration)
+
                 if (declaration is IrClass) {
+                    declaration.thisReceiver?.acceptVoid(localNameGenerator)
                     for (memberDecl in declaration.declarations) {
-                        generateNamesForLocalDeclarations(declaration)
+                        if (memberDecl is IrVariable) {
+                            // TODO: Don't generate variables directly inside classes
+                            memberDecl.acceptVoid(localNameGenerator)
+                        } else {
+                            memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
+                        }
                     }
                 } else {
-                    generateNamesForLocalDeclarations(declaration)
+                    declaration.acceptChildrenVoid(localNameGenerator)
                 }
             }
         }
@@ -131,8 +139,11 @@ class NameTables(packages: List<IrPackageFragment>) {
 
         var parent: IrDeclarationParent = declaration.parent
         while (parent is IrDeclaration) {
-            if (parent in localNames) {
-                return localNames[parent]!!.names[declaration]!!
+            val parentLocalNames = localNames[parent]
+            if (parentLocalNames != null) {
+                val localName = parentLocalNames.names[declaration]
+                if (localName != null)
+                    return localName
             }
             parent = parent.parent
         }
@@ -154,44 +165,44 @@ class NameTables(packages: List<IrPackageFragment>) {
         }
     }
 
-    private fun generateNamesForLocalDeclarations(declaration: IrDeclaration) {
+    inner class LocalNameGenerator(parentDeclaration: IrDeclaration) : IrElementVisitorVoid {
         val table = NameTable(globalNames)
-        localNames[declaration] = table
-        val localLoopNames = NameTable<IrLoop>()
 
-        declaration.acceptChildrenVoid(object : IrElementVisitorVoid {
-            override fun visitElement(element: IrElement) {
-                element.acceptChildrenVoid(this)
-            }
+        init {
+            localNames[parentDeclaration] = table
+        }
 
-            override fun visitValueParameter(declaration: IrValueParameter) {
-                val parentFunction = declaration.parent as? IrFunction
-                if ((declaration.origin == IrDeclarationOrigin.INSTANCE_RECEIVER && declaration.name.isSpecial) ||
-                    (parentFunction != null && declaration == parentFunction.dispatchReceiverParameter)
-                )
-                    table.declareStableName(declaration, Namer.IMPLICIT_RECEIVER_NAME)
-                else
-                    super.visitValueParameter(declaration)
-            }
+        private val localLoopNames = NameTable<IrLoop>()
+        override fun visitElement(element: IrElement) {
+            element.acceptChildrenVoid(this)
+        }
 
-            override fun visitDeclaration(declaration: IrDeclaration) {
-                if (declaration is IrDeclarationWithName && declaration is IrSymbolOwner) {
-                    table.declareFreshName(declaration, declaration.name.asString())
-                }
-                super.visitDeclaration(declaration)
-            }
+        override fun visitValueParameter(declaration: IrValueParameter) {
+            val parentFunction = declaration.parent as? IrFunction
+            if ((declaration.origin == IrDeclarationOrigin.INSTANCE_RECEIVER && declaration.name.isSpecial) ||
+                (parentFunction != null && declaration == parentFunction.dispatchReceiverParameter)
+            )
+                table.declareStableName(declaration, Namer.IMPLICIT_RECEIVER_NAME)
+            else
+                super.visitValueParameter(declaration)
+        }
 
-            override fun visitLoop(loop: IrLoop) {
-                val label = loop.label
-                if (label != null) {
-                    localLoopNames.declareFreshName(loop, label)
-                    loopNames[loop] = localLoopNames.names[loop]!!
-                }
-                super.visitLoop(loop)
+        override fun visitDeclaration(declaration: IrDeclaration) {
+            if (declaration is IrDeclarationWithName && declaration is IrSymbolOwner) {
+                table.declareFreshName(declaration, declaration.name.asString())
             }
-        })
+            super.visitDeclaration(declaration)
+        }
+
+        override fun visitLoop(loop: IrLoop) {
+            val label = loop.label
+            if (label != null) {
+                localLoopNames.declareFreshName(loop, label)
+                loopNames[loop] = localLoopNames.names[loop]!!
+            }
+            super.visitLoop(loop)
+        }
     }
-
 
     fun getNameForLoop(loop: IrLoop): String? =
         if (loop.label == null)
