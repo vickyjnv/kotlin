@@ -6,10 +6,12 @@
 package org.jetbrains.kotlin.gradle.targets.js.npm
 
 import org.gradle.api.Project
+import org.gradle.process.ExecSpec
+import org.gradle.process.ProcessForkOptions
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import java.io.File
 
-class NpmProjectLayout(val nodeWorkDir: File) {
+class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
     val nodeModulesDir
         get() = nodeWorkDir.resolve(NODE_MODULES)
 
@@ -17,6 +19,19 @@ class NpmProjectLayout(val nodeWorkDir: File) {
         get() {
             return nodeWorkDir.resolve(PACKAGE_JSON)
         }
+
+    fun useTool(exec: ExecSpec, tool: String, vararg args: String) {
+        NpmResolver.resolve(project)
+
+        exec.workingDir = nodeWorkDir
+        exec.executable = NodeJsPlugin[project].buildEnv().nodeExecutable
+        exec.args = listOf(findModule(tool)) + args
+    }
+
+    fun findModule(name: String) =
+        nodeModulesDir.resolve(name).also { file ->
+            check(file.isFile) { "Cannot find ${file.canonicalPath}" }
+        }.canonicalPath
 
     companion object {
         const val PACKAGE_JSON = "package.json"
@@ -29,7 +44,7 @@ class NpmProjectLayout(val nodeWorkDir: File) {
                 if (manageNodeModules) project.rootDir
                 else project.buildDir
 
-            return NpmProjectLayout(nodeWorkDir)
+            return NpmProjectLayout(project, nodeWorkDir)
         }
     }
 }
