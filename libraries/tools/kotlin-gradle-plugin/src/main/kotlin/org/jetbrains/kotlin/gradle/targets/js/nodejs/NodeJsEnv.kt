@@ -5,8 +5,8 @@ import java.io.File
 internal data class NodeJsEnv(
     val nodeDir: File,
     val nodeBinDir: File,
-    val nodeExec: String,
-    val npmExec: String,
+    val nodeExecutable: String,
+    val npmExecutable: String,
 
     val platformName: String,
     val architectureName: String,
