@@ -41,10 +41,7 @@ import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.cli.metadata.K2MetadataCompiler
 import org.jetbrains.kotlin.config.Services
 import org.jetbrains.kotlin.daemon.common.*
-import org.jetbrains.kotlin.daemon.report.CompileServicesFacadeMessageCollector
-import org.jetbrains.kotlin.daemon.report.DaemonMessageReporter
-import org.jetbrains.kotlin.daemon.report.DaemonMessageReporterPrintStreamAdapter
-import org.jetbrains.kotlin.daemon.report.getICReporter
+import org.jetbrains.kotlin.daemon.report.*
 import org.jetbrains.kotlin.incremental.*
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
@@ -571,16 +568,6 @@ abstract class CompileServiceImplBase(
         compilerMessageCollector: MessageCollector,
         reporter: ICReporter
     ): ExitCode {
-        val moduleFile = k2jvmArgs.buildFile?.let(::File)
-        assert(moduleFile?.exists() ?: false) { "Module does not exist ${k2jvmArgs.buildFile}" }
-
-        // todo: pass javaSourceRoots and allKotlinFiles using IncrementalCompilationOptions
-        val parsedModule = run {
-            val bytesOut = ByteArrayOutputStream()
-            val printStream = PrintStream(bytesOut)
-            val mc = PrintingMessageCollector(printStream, MessageRenderer.PLAIN_FULL_PATHS, false)
-            val parsedModule = ModuleXmlParser.parseModuleScript(k2jvmArgs.buildFile!!, mc)
-            parsedModule
         val allKotlinExtensions = (DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS +
                 (incrementalCompilationOptions.kotlinScriptExtensions ?: emptyArray())).distinct()
         val dotExtensions = allKotlinExtensions.map { ".$it" }
