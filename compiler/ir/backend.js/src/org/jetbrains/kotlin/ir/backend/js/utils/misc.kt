@@ -19,9 +19,9 @@ fun IrFunction.isEqualsInheritedFromAny() =
             valueParameters.size == 1 &&
             valueParameters[0].type.isNullableAny()
 
-fun IrDeclaration.hasDynamicDispatch() = when (this) {
-    is IrSimpleFunction -> dispatchReceiverParameter != null
-    is IrProperty -> !isTopLevelDeclaration
-    is IrField -> !isStatic
-    else -> false
+fun IrDeclaration.hasStaticDispatch() = when (this) {
+    is IrSimpleFunction -> dispatchReceiverParameter == null
+    is IrProperty -> isTopLevelDeclaration
+    is IrField -> isStatic
+    else -> true
 }

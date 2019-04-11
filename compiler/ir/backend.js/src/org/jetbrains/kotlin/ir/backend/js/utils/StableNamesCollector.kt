@@ -36,10 +36,10 @@ class StableNamesCollector : IrElementVisitorVoid {
             return
 
         val scope =
-            if (declaration.hasDynamicDispatch())
-                memberNames
-            else
+            if (declaration.hasStaticDispatch())
                 staticNames
+            else
+                memberNames
 
         val stableName =
             if (declaration.isEffectivelyExternal())
@@ -95,7 +95,7 @@ private val RESERVED_IDENTIFIERS = setOf(
     "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield",
 
     // additional reserved words
-    // "null", "true", "false",
+    "null", "true", "false",
 
     // disallowed as variable names in strict mode
     "eval", "arguments",
@@ -103,10 +103,10 @@ private val RESERVED_IDENTIFIERS = setOf(
     // global identifiers usually declared in a typical JS interpreter
     "NaN", "isNaN", "Infinity", "undefined",
 
-    "Error", "Object", "Number"
+    "Error", "Object", "Number",
 
-    // "Math", "String", "Boolean", "Date", "Array", "RegExp", "JSON",
+    "Math", "String", "Boolean", "Date", "Array", "RegExp", "JSON",
 
     // global identifiers usually declared in know environments (node.js, browser, require.js, WebWorkers, etc)
-    // "require", "define", "module", "window", "self",
+    "require", "define", "module", "window", "self"
 )
