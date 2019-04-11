@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.targets.js.tasks
+package org.jetbrains.kotlin.gradle.targets.js.testing
 
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -13,13 +13,12 @@ import org.jetbrains.kotlin.gradle.plugin.HasKotlinDependencies
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver
-import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTestFramework
 import org.jetbrains.kotlin.gradle.targets.js.testing.karma.KotlinKarma
 import org.jetbrains.kotlin.gradle.targets.js.testing.nodejs.KotlinNodeJsTestRunner
 import org.jetbrains.kotlin.gradle.targets.js.testing.mocha.KotlinMocha
-import org.jetbrains.kotlin.gradle.tasks.KotlinTestTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 
-open class KotlinNodeJsTestTask : KotlinTestTask() {
+open class KotlinJsTest : KotlinTest() {
     @Internal
     private var testFramework: KotlinJsTestFramework = KotlinNodeJsTestRunner()
 
