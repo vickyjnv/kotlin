@@ -14,17 +14,24 @@ import org.jetbrains.kotlin.resolve.DescriptorUtils
 
 private val INLINE_ONLY_ANNOTATION_FQ_NAME = FqName("kotlin.internal.InlineOnly")
 
-fun MemberDescriptor.isInlineOnlyOrReifiable(): Boolean =
-    this is CallableMemberDescriptor && (isReifiable() || DescriptorUtils.getDirectMember(this).isReifiable() || isInlineOnly())
-
 fun MemberDescriptor.isEffectivelyInlineOnly(): Boolean =
-    isInlineOnlyOrReifiable() || (this is FunctionDescriptor && isSuspend && isInline &&
-            (valueParameters.any { it.isCrossinline } || visibility == Visibilities.PRIVATE))
+    isInlineWithReified() || isInlineOnly() || isPrivateInlineSuspend() || isInlineSuspendWithCrossinlineParameter()
 
 fun MemberDescriptor.isInlineOnly(): Boolean =
     this is FunctionDescriptor && isInline &&
             (hasInlineOnlyAnnotation() || DescriptorUtils.getDirectMember(this).hasInlineOnlyAnnotation())
 
-private fun CallableMemberDescriptor.isReifiable() = typeParameters.any { it.isReified }
+private fun MemberDescriptor.isPrivateInlineSuspend(): Boolean =
+    this is FunctionDescriptor && isSuspend && isInline && visibility == Visibilities.PRIVATE
 
-private fun CallableMemberDescriptor.hasInlineOnlyAnnotation() = annotations.hasAnnotation(INLINE_ONLY_ANNOTATION_FQ_NAME)
+private fun MemberDescriptor.isInlineSuspendWithCrossinlineParameter(): Boolean =
+    this is FunctionDescriptor && isSuspend && isInline && valueParameters.any { it.isCrossinline }
+
+fun MemberDescriptor.isInlineWithReified(): Boolean =
+    this is CallableMemberDescriptor && (hasReifiedParameters() || DescriptorUtils.getDirectMember(this).hasReifiedParameters())
+
+private fun CallableMemberDescriptor.hasReifiedParameters(): Boolean =
+    typeParameters.any { it.isReified }
+
+private fun CallableMemberDescriptor.hasInlineOnlyAnnotation(): Boolean =
+    annotations.hasAnnotation(INLINE_ONLY_ANNOTATION_FQ_NAME)
