@@ -24,7 +24,7 @@ import java.io.File
 import java.net.URL
 
 fun main(args: Array<String>) {
-    val dir = File("../../stdlib/js/idl")
+    val dir = File("../../stdlib/js-common/idl")
     dir.mkdirs()
 
     var packageFilter: String? = null
