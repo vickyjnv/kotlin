@@ -101,14 +101,9 @@ class NameTables(packages: List<IrPackageFragment>) {
                 val localNameGenerator = LocalNameGenerator(declaration)
 
                 if (declaration is IrClass) {
-                    declaration.thisReceiver?.acceptVoid(localNameGenerator)
+                    declaration.thisReceiver!!.acceptVoid(localNameGenerator)
                     for (memberDecl in declaration.declarations) {
-                        if (memberDecl is IrVariable) {
-                            // TODO: Don't generate variables directly inside classes
-                            memberDecl.acceptVoid(localNameGenerator)
-                        } else {
-                            memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
-                        }
+                        memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
                     }
                 } else {
                     declaration.acceptChildrenVoid(localNameGenerator)

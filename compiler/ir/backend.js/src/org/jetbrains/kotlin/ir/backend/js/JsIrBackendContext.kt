@@ -89,7 +89,7 @@ class JsIrBackendContext(
 
     val hasTests get() = testContainerField != null
 
-    val testContainer
+    val testContainer: IrSimpleFunction
         get() = testContainerField ?: JsIrBuilder.buildFunction("test fun", irBuiltIns.unitType, implicitDeclarationFile).apply {
             body = JsIrBuilder.buildBlockBody(emptyList())
             testContainerField = this

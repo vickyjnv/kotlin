@@ -30,9 +30,11 @@ class IrModuleToJsTransformer(
         // TODO: fix it up with new name generator
         val anyName = context.getNameForClass(backendContext.irBuiltIns.anyClass.owner)
         val throwableName = context.getNameForClass(backendContext.irBuiltIns.throwableClass.owner)
+        val stringName = context.getNameForClass(backendContext.irBuiltIns.stringClass.owner)
 
         statements += JsVars(JsVars.JsVar(anyName, Namer.JS_OBJECT))
         statements += JsVars(JsVars.JsVar(throwableName, Namer.JS_ERROR))
+        statements += JsVars(JsVars.JsVar(stringName, JsNameRef("String")))
 
         val preDeclarationBlock = JsBlock()
         val postDeclarationBlock = JsBlock()
@@ -50,7 +52,7 @@ class IrModuleToJsTransformer(
         statements += context.staticContext.initializerBlock
 
         if (backendContext.hasTests) {
-            statements += JsInvocation(context.getNameForSymbol(backendContext.testContainer.symbol).makeRef()).makeStmt()
+            statements += JsInvocation(context.getNameForStaticFunction(backendContext.testContainer).makeRef()).makeStmt()
         }
 
         return statements
@@ -79,10 +81,16 @@ class IrModuleToJsTransformer(
         context: JsGenerationContext,
         internalModuleName: JsName
     ): JsExpressionStatement? {
-        if (declaration !is IrDeclarationWithVisibility || declaration.visibility != Visibilities.PUBLIC)
+        if (declaration !is IrDeclarationWithVisibility ||
+            declaration !is IrDeclarationWithName ||
+            declaration.visibility != Visibilities.PUBLIC) {
             return null
+        }
 
         if (declaration.isEffectivelyExternal())
+            return null
+
+        if (declaration is IrClass && declaration.isCompanion)
             return null
 
         val name: JsName = when (declaration) {
@@ -93,11 +101,14 @@ class IrModuleToJsTransformer(
             else -> return null
         }
 
+        val exportName = sanitizeName(declaration.getJsNameOrKotlinName().asString())
+
         val expression =
             if (declaration is IrClass && declaration.isObject) {
+                // TODO: Use export names for properties
                 defineProperty(internalModuleName.makeRef(), name.ident, getter = JsNameRef("${name.ident}_getInstance"))
             } else {
-                jsAssignment(JsNameRef(name, internalModuleName.makeRef()), name.makeRef())
+                jsAssignment(JsNameRef(exportName, internalModuleName.makeRef()), name.makeRef())
             }
 
         return JsExpressionStatement(expression)
