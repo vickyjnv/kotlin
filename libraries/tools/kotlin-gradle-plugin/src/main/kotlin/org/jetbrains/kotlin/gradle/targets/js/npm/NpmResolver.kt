@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsExtension
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver.ResolutionCallResult.*
 
 /**
@@ -50,7 +51,7 @@ internal class NpmResolver private constructor(val rootProject: Project) {
         class ResolvedNow(val resolution: ResolvedProject) : ResolutionCallResult()
     }
 
-    private val nodeJs = NodeJsPlugin[rootProject]
+    private val nodeJs = NodeJsPlugin.apply(rootProject)
     private val packageManager = nodeJs.packageManager
     private val hoistGradleNodeModules = packageManager.hoistGradleNodeModules
     private val npmPackages = mutableListOf<NpmPackage>()
@@ -175,7 +176,7 @@ internal class NpmResolver private constructor(val rootProject: Project) {
             packageJson.dependencies[it.key] = chooseVersion(packageJson.dependencies[it.key], it.version)
         }
 
-        NodeJsExtension[project].packageJsonHandlers.forEach {
+        project.nodeJs.packageJsonHandlers.forEach {
             it(packageJson)
         }
 

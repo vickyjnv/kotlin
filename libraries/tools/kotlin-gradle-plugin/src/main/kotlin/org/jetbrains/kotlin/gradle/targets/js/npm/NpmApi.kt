@@ -27,6 +27,13 @@ interface NpmApi {
     open val hoistGradleNodeModules
         get() = false
 
+    fun cleanProject(project: Project) {
+        val npmProject = project.npmProject
+
+        npmProject.nodeModulesDir.deleteRecursively()
+        npmProject.packageJsonFile.delete()
+    }
+
     companion object {
         fun resolveOperationDescription(packageManagerTitle: String): String =
             "Resolving NPM dependencies using $packageManagerTitle"

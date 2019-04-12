@@ -7,8 +7,8 @@ package org.jetbrains.kotlin.gradle.targets.js.npm
 
 import org.gradle.api.Project
 import org.gradle.process.ExecSpec
-import org.gradle.process.ProcessForkOptions
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
 import java.io.File
 
 class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
@@ -24,7 +24,7 @@ class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
         NpmResolver.resolve(project)
 
         exec.workingDir = nodeWorkDir
-        exec.executable = NodeJsPlugin[project].buildEnv().nodeExecutable
+        exec.executable = project.nodeJs.root.environment.nodeExecutable
         exec.args = listOf(findModule(tool)) + args
     }
 
@@ -38,7 +38,7 @@ class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
         const val NODE_MODULES = "node_modules"
 
         operator fun get(project: Project): NpmProjectLayout {
-            val manageNodeModules = NodeJsPlugin[project].manageNodeModules
+            val manageNodeModules = NodeJsPlugin.apply(project).manageNodeModules
 
             val nodeWorkDir =
                 if (manageNodeModules) project.rootDir
@@ -48,3 +48,6 @@ class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
         }
     }
 }
+
+val Project.npmProject
+    get() = NpmProjectLayout[this]

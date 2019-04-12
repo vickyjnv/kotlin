@@ -57,7 +57,7 @@ open class KotlinJsTest : KotlinTest() {
         NpmResolver.resolve(project)
 
         forkOptions.workingDir = NpmProjectLayout[project].nodeWorkDir
-        forkOptions.executable = NodeJsPlugin[project].buildEnv().nodeExecutable
+        forkOptions.executable = NodeJsPlugin.apply(project).environment.nodeExecutable
 
         val nodeJsArgs = mutableListOf<String>()
 

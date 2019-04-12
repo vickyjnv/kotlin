@@ -11,8 +11,8 @@ import java.io.File
 import java.net.URI
 
 open class NodeJsSetupTask : DefaultTask() {
-    private val settings = NodeJsRootExtension[project]
-    private val env by lazy { settings.buildEnv() }
+    private val settings = project.nodeJs.root
+    private val env by lazy { settings.environment }
 
     init {
         group = NodeJsRootExtension.NODE_JS
