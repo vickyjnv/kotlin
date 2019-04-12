@@ -157,16 +157,7 @@ fun isInlineIrExpression(argumentExpression: IrExpression) =
             (argumentExpression.origin == IrStatementOrigin.LAMBDA || argumentExpression.origin == IrStatementOrigin.ANONYMOUS_FUNCTION)
 
 fun IrFunction.isInlineFunctionCall(context: JvmBackendContext) =
-    (!context.state.isInlineDisabled || typeParameters.any { it.isReified }) &&
-            (isInline || isArrayConstructorWithLambda())
-
-private fun IrFunction.isArrayConstructorWithLambda() =
-    valueParameters.size == 2 &&
-            this is IrConstructor &&
-            parentAsClass.let {
-                it.getPackageFragment()?.fqName?.asString() == "kotlin" &&
-                        it.name.asString().endsWith("Array")
-            }
+    (!context.state.isInlineDisabled || typeParameters.any { it.isReified }) && isInline
 
 fun IrValueParameter.isInlineParameter() =
     !isNoinline && !type.isNullable() && type.isFunctionOrKFunction()

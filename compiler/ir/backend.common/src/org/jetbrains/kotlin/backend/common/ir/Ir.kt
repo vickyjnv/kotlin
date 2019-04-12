@@ -107,6 +107,12 @@ abstract class Symbols<out T : CommonBackendContext>(val context: T, private val
         }
     )
 
+    val arrayOfNulls = symbolTable.referenceSimpleFunction(
+        builtInsPackage("kotlin").getContributedFunctions(
+            Name.identifier("arrayOfNulls"), NoLookupLocation.FROM_BACKEND
+        ).first()
+    )
+
     val array = symbolTable.referenceClass(builtIns.array)
 
     private fun primitiveArrayClass(type: PrimitiveType) =

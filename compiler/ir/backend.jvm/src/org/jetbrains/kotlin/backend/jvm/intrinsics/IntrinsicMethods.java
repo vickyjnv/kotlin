@@ -123,7 +123,7 @@ public class IntrinsicMethods {
         declareIntrinsicFunction(FQ_NAMES.cloneable, "clone", 0, CLONE);
 
         intrinsicsMap.registerIntrinsic(BUILT_INS_PACKAGE_FQ_NAME, KotlinBuiltIns.FQ_NAMES.any, "toString", 0, TO_STRING);
-        intrinsicsMap.registerIntrinsic(BUILT_INS_PACKAGE_FQ_NAME, null, "arrayOfNulls", 1, new NewArray());
+        intrinsicsMap.registerIntrinsic(BUILT_INS_PACKAGE_FQ_NAME, null, "arrayOfNulls", 1, NewArray.INSTANCE);
 
         for (PrimitiveType type : PrimitiveType.values()) {
             declareIntrinsicFunction(type.getTypeFqName(), "compareTo", 1, new CompareTo());
@@ -146,7 +146,7 @@ public class IntrinsicMethods {
         declareIntrinsicFunction(arrayTypeFqName, "get", 1, ARRAY_GET);
         declareIntrinsicFunction(arrayTypeFqName, "clone", 0, CLONE);
         declareIntrinsicFunction(arrayTypeFqName, "iterator", 0, ARRAY_ITERATOR);
-        declareIntrinsicFunction(arrayTypeFqName, "<init>", 2, ArrayConstructor.INSTANCE);
+        declareIntrinsicFunction(arrayTypeFqName, "<init>", 1, NewArray.INSTANCE);
     }
 
     private void declareBinaryOp(@NotNull String methodName, int opcode) {
