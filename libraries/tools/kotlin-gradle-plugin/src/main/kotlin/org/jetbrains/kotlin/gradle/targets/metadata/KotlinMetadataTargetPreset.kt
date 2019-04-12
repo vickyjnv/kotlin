@@ -9,10 +9,12 @@ package org.jetbrains.kotlin.gradle.plugin.mpp
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
-import org.jetbrains.kotlin.gradle.plugin.*
+import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.plugin.KotlinTargetConfigurator
 import org.jetbrains.kotlin.gradle.plugin.sources.applyLanguageSettingsToKotlinTask
 import org.jetbrains.kotlin.gradle.targets.metadata.KotlinMetadataTargetConfigurator
-import org.jetbrains.kotlin.gradle.tasks.KotlinTasksProvider
 
 class KotlinMetadataTargetPreset(
     project: Project,
@@ -37,6 +39,8 @@ class KotlinMetadataTargetPreset(
 
     override fun createKotlinTargetConfigurator(): KotlinTargetConfigurator<KotlinCommonCompilation> =
         KotlinMetadataTargetConfigurator(kotlinPluginVersion)
+
+    override fun instantiateTarget(): KotlinOnlyTarget<KotlinCommonCompilation> = KotlinMetadataTarget(project)
 
     override fun createTarget(name: String): KotlinOnlyTarget<KotlinCommonCompilation> =
         super.createTarget(name).apply {

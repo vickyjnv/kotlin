@@ -10,6 +10,7 @@ import groovy.lang.Closure
 import org.gradle.api.Action
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.invocation.Gradle
 import org.gradle.util.ConfigureUtil
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
 import java.io.File
 import java.util.*
+import java.util.concurrent.Callable
 
 private const val OLD_BINARY_API_DEPRECATION =
     "Use the `binaries` block instead. See: https://kotlinlang.org/docs/reference/building-mpp-with-gradle.html#building-final-native-binaries"
@@ -75,7 +77,7 @@ class KotlinNativeCompilation(
     internal val allSources: MutableSet<SourceDirectorySet> = mutableSetOf()
 
     // TODO: Move into the compilation task when the linking task does klib linking instead of compilation.
-    internal val commonSources: MutableSet<SourceDirectorySet> = mutableSetOf()
+    internal val commonSources: ConfigurableFileCollection = project.files()
 
     var isTestCompilation = false
 
@@ -271,10 +273,8 @@ class KotlinNativeCompilation(
     val binariesTaskName: String
         get() = lowerCamelCaseName(target.disambiguationClassifier, compilationName, "binaries")
 
-    override fun addSourcesToCompileTask(sourceSet: KotlinSourceSet, addAsCommonSources: Boolean) {
+    override fun addSourcesToCompileTask(sourceSet: KotlinSourceSet, addAsCommonSources: Lazy<Boolean>) {
         allSources.add(sourceSet.kotlin)
-        if (addAsCommonSources) {
-            commonSources.add(sourceSet.kotlin)
-        }
+        commonSources.from(project.files(Callable { if (addAsCommonSources.value) sourceSet.kotlin else emptyList<Any>() }))
     }
 }
