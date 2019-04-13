@@ -41,7 +41,7 @@ class NpmProjectLayout(val project: Project, val nodeWorkDir: File) {
             val manageNodeModules = NodeJsPlugin.apply(project).manageNodeModules
 
             val nodeWorkDir =
-                if (manageNodeModules) project.rootDir
+                if (manageNodeModules) project.projectDir
                 else project.buildDir
 
             return NpmProjectLayout(project, nodeWorkDir)

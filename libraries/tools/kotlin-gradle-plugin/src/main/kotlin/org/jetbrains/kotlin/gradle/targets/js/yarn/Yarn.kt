@@ -11,10 +11,7 @@ import org.gradle.internal.hash.FileHasher
 import org.jetbrains.kotlin.daemon.common.toHexString
 import org.jetbrains.kotlin.gradle.internal.execWithProgress
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmApi
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver
-import org.jetbrains.kotlin.gradle.targets.js.npm.PackageJson
+import org.jetbrains.kotlin.gradle.targets.js.npm.*
 import java.io.File
 
 object Yarn : NpmApi {
@@ -44,10 +41,51 @@ object Yarn : NpmApi {
 
         packageJsonHashFile.writeText(hash)
 
+        val nodeWorkDir = npmProjectLayout.nodeWorkDir
+
         project.execWithProgress(description) { exec ->
             exec.executable = nodeJsEnv.nodeExecutable
             exec.args = listOf(yarnEnv.home.resolve("bin/yarn.js").absolutePath) + args
-            exec.workingDir = npmProjectLayout.nodeWorkDir
+            exec.workingDir = nodeWorkDir
+        }
+    }
+
+    private fun yarnLockReadTransitiveDependencies(
+        nodeWorkDir: File,
+        srcDependenciesList: Collection<NpmDependency>
+    ) {
+        val yarnLock = nodeWorkDir.resolve("yarn.lock")
+        if (yarnLock.isFile) {
+            val byKey = YarnLock.parse(yarnLock).entries.associateBy { it.key }
+            val visited = mutableSetOf<NpmDependency>()
+
+            fun resolveRecursively(src: NpmDependency): NpmDependency {
+                if (src in visited) return src
+                visited.add(src)
+
+                val key = YarnLock.key(src.key, src.version)
+                val deps = byKey[key]
+                if (deps != null) {
+                    src.dependencies.addAll(deps.dependencies.map { dep ->
+                        resolveRecursively(
+                            NpmDependency(
+                                src.project,
+                                dep.group,
+                                dep.packageName,
+                                dep.version ?: "*"
+                            )
+                        )
+                    })
+                } else {
+                    // todo: [WARN] cannot find $key in yarn.lock
+                }
+
+                return src
+            }
+
+            srcDependenciesList.forEach { src ->
+                resolveRecursively(src)
+            }
         }
     }
 
@@ -56,18 +94,30 @@ object Yarn : NpmApi {
         val project = npmPackage.project
         if (!project.yarn.useWorkspaces) {
             yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
+            yarnLockReadTransitiveDependencies(NpmProjectLayout[project].nodeWorkDir, npmPackage.npmDependencies)
         }
     }
 
     @Suppress("EXPOSED_PARAMETER_TYPE")
-    override fun hookRootPackage(rootProject: Project, rootPackageJson: PackageJson, allWorkspaces: Collection<NpmResolver.NpmPackage>) {
+    override fun hookRootPackage(
+        rootProject: Project,
+        rootPackageJson: PackageJson,
+        allWorkspaces: Collection<NpmResolver.NpmPackage>
+    ): Boolean {
         if (rootProject.yarn.useWorkspaces) {
             rootPackageJson.private = true
             rootPackageJson.workspaces = allWorkspaces
                 .filter { it.project != rootProject }
-                .map { it.project.rootDir.relativeTo(rootProject.rootDir).path }
+                .map { it.project.projectDir.relativeTo(rootProject.rootDir).path }
+
+            return true
         }
+
+        return false
     }
+
+    override fun getHoistGradleNodeModules(project: Project): Boolean =
+        project.rootProject.yarn.useWorkspaces
 
     @Suppress("EXPOSED_PARAMETER_TYPE")
     override fun resolveRootProject(
@@ -78,6 +128,7 @@ object Yarn : NpmApi {
 
         if (rootProject.yarn.useWorkspaces) {
             yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
+            yarnLockReadTransitiveDependencies(NpmProjectLayout[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
         } else {
             if (subprojects.any { it.project != rootProject }) {
                 // todo: proofread message
