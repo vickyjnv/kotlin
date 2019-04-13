@@ -21,9 +21,8 @@ internal interface InternalMap<K, V> : MutableIterable<MutableMap.MutableEntry<K
     fun createJsMap(): dynamic {
         val newJsMap = js("Object.create(null)")
         // force to switch object representation to dictionary mode
-        // Using js-function due to JS_IR limitations
-        js("newJsMap[\"foo\"] = 1")
-        js("delete newJsMap[\"foo\"]")
+        newJsMap["foo"] = 1
+        jsDeleteProperty(newJsMap, "foo")
         return newJsMap
     }
 }

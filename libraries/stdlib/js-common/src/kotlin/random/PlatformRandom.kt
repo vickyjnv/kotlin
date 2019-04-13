@@ -8,7 +8,7 @@ package kotlin.random
 import kotlin.math.pow
 
 internal actual fun defaultPlatformRandom(): Random =
-    Random(js("(Math.random() * Math.pow(2, 32)) | 0").unsafeCast<Int>())
+    Random(jsBitwiseOr(js("Math").random() * js("Math").pow(2, 32), 0))
 
 
 internal actual fun fastLog2(value: Int): Int {
