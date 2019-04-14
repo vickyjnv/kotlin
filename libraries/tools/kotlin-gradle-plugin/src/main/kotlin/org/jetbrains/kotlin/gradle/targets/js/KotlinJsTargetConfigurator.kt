@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinOnlyTarget
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 import org.jetbrains.kotlin.gradle.tasks.KotlinTasksProvider
+import org.jetbrains.kotlin.gradle.tasks.createOrRegisterTask
 import org.jetbrains.kotlin.gradle.tasks.registerTask
 
 class KotlinJsTargetConfigurator(kotlinPluginVersion: String) :
@@ -42,12 +43,6 @@ class KotlinJsTargetConfigurator(kotlinPluginVersion: String) :
                 KotlinJsCompilationTestsConfigurator(compilation).configure()
             } else {
                 KotlinWebpack.configure(compilation)
-
-                registerTask(project, "webpack", KotlinWebpack::class.java) {
-                    it.dependsOn(compilation.compileKotlinTask)
-
-                    it.entry = npmProject.nodeModulesDir.resolve(compilation.compileKotlinTask.outputFile.name)
-                }
             }
         }
     }

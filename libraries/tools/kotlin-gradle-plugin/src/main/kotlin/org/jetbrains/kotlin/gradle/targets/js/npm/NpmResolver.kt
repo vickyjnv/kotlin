@@ -55,8 +55,9 @@ internal class NpmResolver private constructor(val rootProject: Project) {
     }
 
     private val nodeJs = NodeJsPlugin.apply(rootProject).root
+    private val npmProject = rootProject.npmProject
     private val packageManager = nodeJs.packageManager
-    private val hoistGradleNodeModules = packageManager.getHoistGradleNodeModules(rootProject)
+    private val hoistGradleNodeModules = npmProject.hoistGradleNodeModules
     private val npmPackages = mutableListOf<NpmPackage>()
     private val gson = GsonBuilder()
         .setPrettyPrinting()
