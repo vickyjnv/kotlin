@@ -19,10 +19,7 @@ open class NodeJsExtension(val project: Project) {
     }
 
     companion object {
-        operator fun get(project: Project): NodeJsExtension {
-            NodeJsPlugin.apply(project.rootProject)
-            return project.extensions.getByName(NodeJsRootExtension.NODE_JS) as NodeJsExtension
-        }
+        operator fun get(project: Project) = NodeJsPlugin.apply(project)
     }
 }
 

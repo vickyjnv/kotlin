@@ -29,7 +29,7 @@ open class YarnRootExtension(val project: Project) {
         get() = project.nodeJs.root.manageNodeModules && !disableWorkspaces
 
     internal fun executeSetup() {
-        NodeJsPlugin.apply(project).executeSetup()
+        NodeJsPlugin.apply(project).root.executeSetup()
 
         val env = environment
         if (!env.home.isDirectory) {

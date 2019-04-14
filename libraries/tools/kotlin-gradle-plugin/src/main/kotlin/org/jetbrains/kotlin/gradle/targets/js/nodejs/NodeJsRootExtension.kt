@@ -70,6 +70,6 @@ open class NodeJsRootExtension(project: Project) : NodeJsExtension(project) {
     companion object {
         const val NODE_JS: String = "nodeJs"
 
-        operator fun get(project: Project) = NodeJsPlugin.apply(project)
+        operator fun get(project: Project) = NodeJsPlugin.apply(project.rootProject) as NodeJsRootExtension
     }
 }

@@ -38,10 +38,10 @@ open class NodeJsPlugin : Plugin<Project> {
     }
 
     companion object {
-        fun apply(project: Project): NodeJsRootExtension {
+        fun apply(project: Project): NodeJsExtension {
             val rootProject = project.rootProject
             rootProject.plugins.apply(NodeJsPlugin::class.java)
-            return rootProject.extensions.getByName(NODE_JS) as NodeJsRootExtension
+            return rootProject.extensions.getByName(NODE_JS) as NodeJsExtension
         }
     }
 }
