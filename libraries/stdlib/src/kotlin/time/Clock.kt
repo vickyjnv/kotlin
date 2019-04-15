@@ -9,15 +9,8 @@ public interface Clock {
 
     /**
      * Marks a time point on this clock.
-     *
-     * @param initialElapsed An initial value of [ClockMark.elapsedFrom] property of the resulting [ClockMark]:
-     *
-     * - pass [Duration.ZERO] to mark a time point that is now.
-     * - pass a positive duration to mark a time point in the past.
-     * - pass a negative duration to mark a time point in the future.
-     *
      */
-    fun mark(initialElapsed: Duration = Duration.ZERO): ClockMark
+    fun mark(): ClockMark
 
     companion object {
         val Default: Clock get() = MonoClock
@@ -26,6 +19,15 @@ public interface Clock {
 }
 
 public interface ClockMark {
-    val clock: Clock
-    val elapsedFrom: Duration
+    fun elapsed(): Duration
+
+    operator fun plus(duration: Duration): ClockMark = AdjustedClockMark(this, duration)
+    operator fun minus(duration: Duration): ClockMark = plus(-duration)
+}
+
+
+private class AdjustedClockMark(val mark: ClockMark, val adjustment: Duration) : ClockMark {
+    override fun elapsed(): Duration = mark.elapsed() - adjustment
+
+    override fun plus(duration: Duration): ClockMark = AdjustedClockMark(mark, adjustment + duration)
 }

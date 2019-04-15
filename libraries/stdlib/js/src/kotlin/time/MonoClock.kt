@@ -21,7 +21,7 @@ actual object MonoClock : Clock {
 
     }
 
-    override fun mark(initialElapsed: Duration): ClockMark = actualClock.mark(initialElapsed)
+    override fun mark(): ClockMark = actualClock.mark()
 }
 
 internal external interface Process {
@@ -30,11 +30,10 @@ internal external interface Process {
 
 internal class HrTimeClock(val process: Process) : Clock {
 
-    override fun mark(initialElapsed: Duration): ClockMark = object : ClockMark {
+    override fun mark(): ClockMark = object : ClockMark {
         val startedAt = process.hrtime()
-        override val clock: Clock get() = this@HrTimeClock // delegation problem?
-        override val elapsedFrom: Duration
-            get() = process.hrtime(startedAt).let { (seconds, nanos) -> seconds.seconds + nanos.nanoseconds + initialElapsed }
+        override fun elapsed(): Duration =
+            process.hrtime(startedAt).let { (seconds, nanos) -> seconds.seconds + nanos.nanoseconds }
     }
 
     override fun toString(): String = "process.hrtime()"
