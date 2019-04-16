@@ -42,6 +42,8 @@ class TypeVariableTypeConstructor(private val builtIns: KotlinBuiltIns, val debu
 
     override fun getBuiltIns() = builtIns
 
+    override fun refine(moduleDescriptor: ModuleDescriptor): TypeConstructor? = null
+
     override fun toString() = "TypeVariable($debugName)"
 }
 

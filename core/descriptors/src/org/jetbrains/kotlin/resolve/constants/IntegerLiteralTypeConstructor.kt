@@ -164,6 +164,8 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
 
     override fun getBuiltIns(): KotlinBuiltIns = module.builtIns
 
+    override fun refine(moduleDescriptor: ModuleDescriptor) = IntegerLiteralTypeConstructor(value, moduleDescriptor, possibleTypes)
+
     override fun toString(): String {
         return "IntegerLiteralType${valueToString()}"
     }

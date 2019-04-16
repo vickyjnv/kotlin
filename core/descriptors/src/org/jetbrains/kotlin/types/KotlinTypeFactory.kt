@@ -180,7 +180,10 @@ private class SimpleTypeImpl(
     override fun refine(moduleDescriptor: ModuleDescriptor): SimpleType {
         if (constructor.declarationDescriptor?.module === moduleDescriptor) return this
 
-        return SimpleTypeImpl(constructor, arguments, isMarkedNullable, scopeFactory(moduleDescriptor), scopeFactory)
+        return SimpleTypeImpl(
+            constructor.refine(moduleDescriptor) ?: constructor,
+            arguments, isMarkedNullable, scopeFactory(moduleDescriptor), scopeFactory
+        )
     }
 }
 
