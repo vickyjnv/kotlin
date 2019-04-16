@@ -74,4 +74,6 @@ class FunctionPlaceholderTypeConstructor(
     override fun getBuiltIns(): KotlinBuiltIns {
         return kotlinBuiltIns
     }
+
+    override fun refine(moduleDescriptor: ModuleDescriptor): TypeConstructor? = null
 }

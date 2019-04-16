@@ -63,4 +63,7 @@ public interface TypeConstructor extends TypeConstructorMarker {
 
     @NotNull
     KotlinBuiltIns getBuiltIns();
+
+    @Nullable
+    TypeConstructor refine(@NotNull ModuleDescriptor moduleDescriptor);
 }

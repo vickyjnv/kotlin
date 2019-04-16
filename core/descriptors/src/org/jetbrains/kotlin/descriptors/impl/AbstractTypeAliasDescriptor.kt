@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
+import org.jetbrains.kotlin.resolve.descriptorUtil.classId
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.types.*
@@ -122,5 +123,8 @@ abstract class AbstractTypeAliasDescriptor(
             declarationDescriptor.builtIns
 
         override fun toString(): String = "[typealias ${declarationDescriptor.name.asString()}]"
+
+        override fun refine(moduleDescriptor: ModuleDescriptor) =
+            classId?.let(moduleDescriptor::findClassifierAcrossModuleDependencies)?.typeConstructor
     }
 }
