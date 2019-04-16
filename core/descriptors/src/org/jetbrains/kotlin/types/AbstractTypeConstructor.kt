@@ -16,9 +16,9 @@
 
 package org.jetbrains.kotlin.types
 
-import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.SupertypeLoopChecker
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
+import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.resolve.descriptorUtil.classId
 import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.storage.getValue
 
@@ -26,6 +26,42 @@ abstract class AbstractTypeConstructor(private val storageManager: StorageManage
     override fun getSupertypes() = supertypes().supertypesWithoutCycles
 
     abstract override fun getDeclarationDescriptor(): ClassifierDescriptor
+
+    override fun refine(moduleDescriptor: ModuleDescriptor): TypeConstructor? {
+        val sameDescriptorModelView = ModuleViewTypeConstructor(moduleDescriptor)
+
+        val classId = declarationDescriptor.classId ?: return sameDescriptorModelView
+        val classifierDescriptor =
+            moduleDescriptor.findClassifierAcrossModuleDependencies(classId)
+                ?: return sameDescriptorModelView
+
+        if (classifierDescriptor === declarationDescriptor) return sameDescriptorModelView
+
+        return classifierDescriptor.typeConstructor.refine(moduleDescriptor)
+    }
+
+    private inner class ModuleViewTypeConstructor(
+        private val moduleDescriptor: ModuleDescriptor
+    ) : TypeConstructor {
+        override fun getParameters(): List<TypeParameterDescriptor> = this@AbstractTypeConstructor.parameters
+
+        override fun getSupertypes(moduleDescriptor: ModuleDescriptor) = this@AbstractTypeConstructor.getSupertypes(moduleDescriptor)
+        override fun getSupertypes() = this@AbstractTypeConstructor.getSupertypes().map { it.refine(moduleDescriptor) }
+
+        override fun isFinal(): Boolean = this@AbstractTypeConstructor.isFinal
+        override fun isDenotable(): Boolean = this@AbstractTypeConstructor.isDenotable
+
+        override fun getDeclarationDescriptor() = this@AbstractTypeConstructor.declarationDescriptor
+
+        override fun getBuiltIns(): KotlinBuiltIns = this@AbstractTypeConstructor.builtIns
+
+        override fun refine(moduleDescriptor: ModuleDescriptor) = this@AbstractTypeConstructor.refine(moduleDescriptor)
+
+        override fun equals(other: Any?) = this@AbstractTypeConstructor.equals(other)
+        override fun hashCode() = this@AbstractTypeConstructor.hashCode()
+
+        override fun toString() = "$moduleDescriptor: ${this@AbstractTypeConstructor}"
+    }
 
     private val supertypesByModule by storageManager.createLazyValue {
         val allSupertypes = supertypes().allSupertypes
