@@ -260,5 +260,5 @@ fun ClassDescriptor.refinedSupertypesIfNeeded(
 ): Collection<KotlinType> {
     if (!refine || this.module == moduleDescriptor) return typeConstructor.supertypes
 
-    return typeConstructor.getSupertypes(moduleDescriptor)
+    return typeConstructor.supertypes.map { it.refine(moduleDescriptor) }
 }

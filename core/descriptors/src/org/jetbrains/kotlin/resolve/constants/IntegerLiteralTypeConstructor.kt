@@ -174,8 +174,4 @@ class IntegerLiteralTypeConstructor : TypeConstructor {
 
     private fun valueToString(): String = "[${possibleTypes.joinToString(",") { it.toString() }}]"
 
-    override fun getSupertypes(moduleDescriptor: ModuleDescriptor): Collection<KotlinType> {
-        if (moduleDescriptor.builtIns === builtIns) return supertypes
-        return supertypes.map { it.refine(moduleDescriptor) }
-    }
 }
