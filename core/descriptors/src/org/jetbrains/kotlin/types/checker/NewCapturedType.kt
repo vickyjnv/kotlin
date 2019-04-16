@@ -159,7 +159,6 @@ class NewCapturedTypeConstructor(override val projection: TypeProjection, privat
     }
 
     override fun getSupertypes() = supertypes ?: emptyList()
-    override fun getSupertypes(module: ModuleDescriptor): Collection<KotlinType> = getSupertypes()
     override fun getParameters(): List<TypeParameterDescriptor> = emptyList()
 
     override fun isFinal() = false
