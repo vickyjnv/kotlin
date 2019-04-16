@@ -12,7 +12,7 @@ import org.gradle.process.internal.DefaultProcessForkOptions
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
 import org.jetbrains.kotlin.gradle.plugin.HasKotlinDependencies
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProject
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver
 import org.jetbrains.kotlin.gradle.targets.js.testing.karma.KotlinKarma
 import org.jetbrains.kotlin.gradle.targets.js.testing.mocha.KotlinMocha
@@ -65,7 +65,7 @@ open class KotlinJsTest : KotlinTest() {
 
         NpmResolver.resolve(project)
 
-        forkOptions.workingDir = NpmProjectLayout[project].nodeWorkDir
+        forkOptions.workingDir = NpmProject[project].nodeWorkDir
         forkOptions.executable = NodeJsPlugin.apply(project).root.environment.nodeExecutable
 
         val nodeJsArgs = mutableListOf<String>()

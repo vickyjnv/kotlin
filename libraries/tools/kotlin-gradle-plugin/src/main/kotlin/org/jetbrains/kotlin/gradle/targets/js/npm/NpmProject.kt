@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
 import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 import java.io.File
 
-class NpmProjectLayout(
+class NpmProject(
     val project: Project,
     val nodeWorkDir: File,
     val managed: Boolean
@@ -49,7 +49,7 @@ class NpmProjectLayout(
     }
 
     @TailRecursive
-    fun findModule(name: String, src: NpmProjectLayout = this): String {
+    fun findModule(name: String, src: NpmProject = this): String {
         val file = nodeModulesDir.resolve(name)
         if (file.isFile) return file.canonicalPath
         if (file.isDirectory) {
@@ -68,14 +68,14 @@ class NpmProjectLayout(
 
         val parent = project.parent
         return if (!managed || parent == null) error("Cannot find node module $name in $src")
-        else NpmProjectLayout[parent].findModule(name, src)
+        else NpmProject[parent].findModule(name, src)
     }
 
     companion object {
         const val PACKAGE_JSON = "package.json"
         const val NODE_MODULES = "node_modules"
 
-        operator fun get(project: Project): NpmProjectLayout {
+        operator fun get(project: Project): NpmProject {
             val nodeJsRootExtension = NodeJsPlugin.apply(project)
 
             val manageNodeModules = nodeJsRootExtension.root.manageNodeModules
@@ -84,10 +84,10 @@ class NpmProjectLayout(
                 if (manageNodeModules) project.projectDir
                 else project.buildDir
 
-            return NpmProjectLayout(project, nodeWorkDir, manageNodeModules)
+            return NpmProject(project, nodeWorkDir, manageNodeModules)
         }
     }
 }
 
 val Project.npmProject
-    get() = NpmProjectLayout[this]
+    get() = NpmProject[this]

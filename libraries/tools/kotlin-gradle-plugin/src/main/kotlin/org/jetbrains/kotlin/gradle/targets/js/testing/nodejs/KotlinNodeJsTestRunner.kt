@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClientSetti
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
 import org.jetbrains.kotlin.gradle.plugin.HasKotlinDependencies
 import org.jetbrains.kotlin.gradle.targets.js.internal.parseNodeJsStackTraceAsJvm
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProject
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTestFramework
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.testing.IgnoredTestSuites
@@ -46,11 +46,11 @@ class KotlinNodeJsTestRunner : KotlinJsTestFramework {
         )
 
         val testRuntimeNodeModules = listOf(
-            "kotlin-test-nodejs-runner.js",
-            "kotlin-nodejs-source-map-support.js"
+            "kotlin-test-nodejs-runner/kotlin-test-nodejs-runner.js",
+            "kotlin-test-nodejs-runner/kotlin-nodejs-source-map-support.js"
         )
 
-        val npmProjectLayout = NpmProjectLayout[task.project]
+        val npmProjectLayout = NpmProject[task.project]
 
         val args = nodeJsArgs +
                 testRuntimeNodeModules.map {

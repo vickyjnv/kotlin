@@ -19,9 +19,6 @@ open class NodeJsRootExtension(project: Project) : NodeJsExtension(project) {
 
     var nodeCommand = "node"
 
-    var npmCustomVersion: String? = null
-    var npmCommand = "npm"
-
     var manageNodeModules: Boolean = false
     var packageManager: NpmApi = Yarn
 
@@ -51,7 +48,6 @@ open class NodeJsRootExtension(project: Project) : NodeJsExtension(project) {
                 nodeDir = nodeDir,
                 nodeBinDir = nodeBinDir,
                 nodeExecutable = getExecutable("node", nodeCommand, "exe"),
-                npmExecutable = getExecutable("npm", npmCommand, "cmd"),
                 platformName = platform,
                 architectureName = architecture,
                 ivyDependency = getIvyDependency()

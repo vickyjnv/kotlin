@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClientSetti
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
 import org.jetbrains.kotlin.gradle.plugin.HasKotlinDependencies
 import org.jetbrains.kotlin.gradle.targets.js.internal.parseNodeJsStackTraceAsJvm
-import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProjectLayout
+import org.jetbrains.kotlin.gradle.targets.js.npm.NpmProject
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTestFramework
 
@@ -43,7 +43,7 @@ class KotlinKarma : KotlinJsTestFramework {
             ignoreOutOfRootNodes = true
         )
 
-        val npmProjectLayout = NpmProjectLayout[task.project]
+        val npmProjectLayout = NpmProject[task.project]
 
         val files = task.nodeModulesToLoad.map {
             npmProjectLayout.nodeModulesDir.resolve(it).also { file ->

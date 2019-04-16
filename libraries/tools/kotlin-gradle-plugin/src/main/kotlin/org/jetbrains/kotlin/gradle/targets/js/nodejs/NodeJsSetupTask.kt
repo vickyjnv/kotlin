@@ -55,7 +55,7 @@ open class NodeJsSetupTask : DefaultTask() {
             }
         }
 
-        val dep = this.project.dependencies.create(env.ivyDependency)
+        val dep = this.project.dependencies.create(ivyDependency)
         val conf = this.project.configurations.detachedConfiguration(dep)
         conf.isTransitive = false
         val result = conf.resolve().single()

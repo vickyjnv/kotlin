@@ -26,7 +26,7 @@ object Yarn : NpmApi {
         project: Project,
         description: String,
         vararg args: String,
-        npmProjectLayout: NpmProjectLayout = NpmProjectLayout[project]
+        npmProject: NpmProject = NpmProject[project]
     ) {
         val nodeJsEnv = NodeJsPlugin.apply(project).root.environment
         val yarnEnv = YarnPlugin.apply(project).environment
@@ -35,13 +35,13 @@ object Yarn : NpmApi {
         val packageJsonHash = if (packageJsonHashFile.exists()) packageJsonHashFile.readText() else null
 
         val hasher = (project as ProjectInternal).services.get(FileHasher::class.java)
-        val hash = hasher.hash(npmProjectLayout.packageJsonFile).toByteArray().toHexString()
+        val hash = hasher.hash(npmProject.packageJsonFile).toByteArray().toHexString()
 
         if (packageJsonHash == hash) return
 
         packageJsonHashFile.writeText(hash)
 
-        val nodeWorkDir = npmProjectLayout.nodeWorkDir
+        val nodeWorkDir = npmProject.nodeWorkDir
 
         project.execWithProgress(description) { exec ->
             exec.executable = nodeJsEnv.nodeExecutable
@@ -67,11 +67,13 @@ object Yarn : NpmApi {
                 val deps = byKey[key]
                 if (deps != null) {
                     src.dependencies.addAll(deps.dependencies.map { dep ->
+                        val scopedName = dep.scopedName
+
                         resolveRecursively(
                             NpmDependency(
                                 src.project,
-                                dep.group,
-                                dep.packageName,
+                                scopedName.scope,
+                                scopedName.name,
                                 dep.version ?: "*"
                             )
                         )
@@ -94,7 +96,7 @@ object Yarn : NpmApi {
         val project = npmPackage.project
         if (!project.yarn.useWorkspaces) {
             yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
-            yarnLockReadTransitiveDependencies(NpmProjectLayout[project].nodeWorkDir, npmPackage.npmDependencies)
+            yarnLockReadTransitiveDependencies(NpmProject[project].nodeWorkDir, npmPackage.npmDependencies)
         }
     }
 
@@ -128,7 +130,7 @@ object Yarn : NpmApi {
 
         if (rootProject.yarn.useWorkspaces) {
             yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
-            yarnLockReadTransitiveDependencies(NpmProjectLayout[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
+            yarnLockReadTransitiveDependencies(NpmProject[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
         } else {
             if (subprojects.any { it.project != rootProject }) {
                 // todo: proofread message

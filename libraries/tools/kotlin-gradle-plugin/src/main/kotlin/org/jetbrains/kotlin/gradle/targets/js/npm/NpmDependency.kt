@@ -75,7 +75,7 @@ data class NpmDependency(
     private fun tryFindNodeModule(): File? {
         var p = project
         do {
-            val result = NpmProjectLayout[p].nodeModulesDir.resolve(key)
+            val result = NpmProject[p].nodeModulesDir.resolve(key)
             if (result.exists()) return result
             p = project.parent ?: return null
         } while (true)

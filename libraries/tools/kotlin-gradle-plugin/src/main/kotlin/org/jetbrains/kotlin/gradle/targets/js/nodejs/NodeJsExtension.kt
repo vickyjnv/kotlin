@@ -14,6 +14,7 @@ open class NodeJsExtension(val project: Project) {
 
     internal val packageJsonHandlers = mutableListOf<PackageJson.() -> Unit>()
 
+    @Suppress("unused")
     fun packageJson(handler: PackageJson.() -> Unit) {
         packageJsonHandlers.add(handler)
     }
