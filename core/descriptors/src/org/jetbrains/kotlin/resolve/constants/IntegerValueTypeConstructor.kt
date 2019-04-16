@@ -17,13 +17,9 @@
 package org.jetbrains.kotlin.resolve.constants
 
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
-import org.jetbrains.kotlin.builtins.UnsignedTypes
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
-import org.jetbrains.kotlin.descriptors.findClassAcrossModuleDependencies
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.types.SimpleType
 import org.jetbrains.kotlin.types.TypeConstructor
 import java.util.*
 
@@ -95,6 +91,12 @@ class IntegerValueTypeConstructor(
     override fun getBuiltIns(): KotlinBuiltIns {
         return module.builtIns
     }
+
+    override fun refine(moduleDescriptor: ModuleDescriptor) =
+        IntegerValueTypeConstructor(
+            value, moduleDescriptor,
+            CompileTimeConstant.Parameters(true, isDenotable, isDenotable, isDenotable, true, true, isDenotable)
+        )
 
     override fun toString() = "IntegerValueType($value)"
 }
