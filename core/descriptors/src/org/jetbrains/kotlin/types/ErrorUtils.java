@@ -504,12 +504,6 @@ public class ErrorUtils {
                 return emptyList();
             }
 
-            @NotNull
-            @Override
-            public Collection<KotlinType> getSupertypes(@NotNull ModuleDescriptor moduleDescriptor) {
-                return emptyList();
-            }
-
             @Override
             public boolean isFinal() {
                 return false;
@@ -611,12 +605,6 @@ public class ErrorUtils {
         @Override
         public Collection<KotlinType> getSupertypes() {
             return errorTypeConstructor.getSupertypes();
-        }
-
-        @NotNull
-        @Override
-        public Collection<KotlinType> getSupertypes(@NotNull ModuleDescriptor moduleDescriptor) {
-            return getSupertypes();
         }
 
         @Override

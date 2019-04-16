@@ -45,7 +45,6 @@ abstract class AbstractTypeConstructor(private val storageManager: StorageManage
     ) : TypeConstructor {
         override fun getParameters(): List<TypeParameterDescriptor> = this@AbstractTypeConstructor.parameters
 
-        override fun getSupertypes(moduleDescriptor: ModuleDescriptor) = this@AbstractTypeConstructor.getSupertypes(moduleDescriptor)
         override fun getSupertypes() = this@AbstractTypeConstructor.getSupertypes().map { it.refine(moduleDescriptor) }
 
         override fun isFinal(): Boolean = this@AbstractTypeConstructor.isFinal
@@ -68,7 +67,7 @@ abstract class AbstractTypeConstructor(private val storageManager: StorageManage
         allSupertypes.any(KotlinType::isExpectClass)
     }
 
-    override fun getSupertypes(moduleDescriptor: ModuleDescriptor) =
+    fun getSupertypes(moduleDescriptor: ModuleDescriptor) =
         if (supertypesByModule)
             moduleDescriptor.getOrPutSupertypesForForClass(declarationDescriptor) {
                 computeLazyValue(moduleDescriptor, supertypes().allSupertypes).invoke().supertypesWithoutCycles
