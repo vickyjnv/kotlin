@@ -41,10 +41,6 @@ public interface TypeConstructor extends TypeConstructorMarker {
 
     @NotNull
     @ReadOnly
-    Collection<KotlinType> getSupertypes(@NotNull ModuleDescriptor moduleDescriptor);
-
-    @NotNull
-    @ReadOnly
     Collection<KotlinType> getSupertypes();
 
     /**
