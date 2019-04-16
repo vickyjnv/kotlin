@@ -20,6 +20,7 @@ import com.sun.jdi.ArrayReference
 import com.sun.jdi.ArrayType
 import com.sun.jdi.ClassLoaderReference
 import com.sun.jdi.Value
+import jdk.internal.org.objectweb.asm.Opcodes
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
 import org.jetbrains.kotlin.idea.debugger.evaluate.GENERATED_FUNCTION_NAME
 import org.jetbrains.org.objectweb.asm.ClassReader
@@ -64,6 +65,7 @@ interface ClassLoadingAdapter {
 
         private fun analyzeClass(classToLoad: ClassToLoad, info: ClassInfoForEvaluator): ClassInfoForEvaluator {
             val classNode = ClassNode().apply { ClassReader(classToLoad.bytes).accept(this, 0) }
+
             val methodToRun = classNode.methods.single { it.name == GENERATED_FUNCTION_NAME }
 
             val visitedLabels = hashSetOf<Label>()
@@ -78,6 +80,11 @@ interface ClassLoadingAdapter {
                     }
                     is TableSwitchInsnNode, is LookupSwitchInsnNode -> {
                         return info.copy(containsCodeUnsupportedInEval4J = true)
+                    }
+                    is InsnNode -> {
+                        if (insn.opcode == Opcodes.MONITORENTER || insn.opcode == Opcodes.MONITOREXIT) {
+                            return info.copy(containsCodeUnsupportedInEval4J = true)
+                        }
                     }
                 }
 
