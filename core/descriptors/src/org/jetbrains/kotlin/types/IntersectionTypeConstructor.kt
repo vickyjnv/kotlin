@@ -67,12 +67,13 @@ class IntersectionTypeConstructor(typesToIntersect: Collection<KotlinType>) : Ty
         KotlinTypeFactory.simpleTypeWithNonTrivialMemberScope(
             Annotations.EMPTY, this, listOf(), false, this.createScopeForKotlinType()
         ) { moduleDescriptor: ModuleDescriptor ->
-            IntersectionTypeConstructor(intersectedTypes.map {
-                it.refine(moduleDescriptor)
-            }).createScopeForKotlinType()
+            this.refine(moduleDescriptor).createScopeForKotlinType()
         }
 
     override fun hashCode(): Int = hashCode
+
+    override fun refine(moduleDescriptor: ModuleDescriptor) =
+        IntersectionTypeConstructor(intersectedTypes.map { it.refine(moduleDescriptor) })
 }
 
 inline fun IntersectionTypeConstructor.transformComponents(
