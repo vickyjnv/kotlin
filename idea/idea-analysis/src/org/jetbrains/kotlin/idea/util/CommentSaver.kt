@@ -293,17 +293,17 @@ class CommentSaver(originalElements: PsiChildRange, private val saveLineBreaks: 
             }
         }
 
-        if (needAdjustIndentAfterRestore || forceAdjustIndent) {
-            val file = resultElements.first().containingFile
-            val project = file.project
-            val psiDocumentManager = PsiDocumentManager.getInstance(project)
-            val document = psiDocumentManager.getDocument(file)
-            if (document != null) {
-                psiDocumentManager.doPostponedOperationsAndUnblockDocument(document)
-                psiDocumentManager.commitDocument(document)
-            }
-            CodeStyleManager.getInstance(project).adjustLineIndent(file, resultElements.textRange)
-        }
+//        if (needAdjustIndentAfterRestore || forceAdjustIndent) {
+//            val file = resultElements.first().containingFile
+//            val project = file.project
+//            val psiDocumentManager = PsiDocumentManager.getInstance(project)
+//            val document = psiDocumentManager.getDocument(file)
+//            if (document != null) {
+//                psiDocumentManager.doPostponedOperationsAndUnblockDocument(document)
+//                psiDocumentManager.commitDocument(document)
+//            }
+//            CodeStyleManager.getInstance(project).adjustLineIndent(file, resultElements.textRange)
+//        }
 
         isFinished = true
     }
