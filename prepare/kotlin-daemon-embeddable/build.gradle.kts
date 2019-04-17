@@ -16,6 +16,8 @@ dependencies {
 
 publish()
 
+noDefaultJar()
+
 runtimeJar(rewriteDepsToShadedCompiler(
         task<ShadowJar>("shadowJar")  {
             from(packedJars)

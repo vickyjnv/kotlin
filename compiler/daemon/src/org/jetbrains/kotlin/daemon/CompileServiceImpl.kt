@@ -527,7 +527,7 @@ abstract class CompileServiceImplBase(
         args: K2JSCompilerArguments,
         incrementalCompilationOptions: IncrementalCompilationOptions,
         compilerMessageCollector: MessageCollector,
-        reporter: ICReporter
+        reporter: RemoteICReporter
     ): ExitCode {
         val allKotlinFiles = arrayListOf<File>()
         val freeArgsWithoutKotlinFiles = arrayListOf<String>()
@@ -558,7 +558,7 @@ abstract class CompileServiceImplBase(
         return try {
             compiler.compile(allKotlinFiles, args, compilerMessageCollector, changedFiles)
         } finally {
-            (reporter as RemoteICReporter).flush()
+            reporter.flush()
         }
     }
 
@@ -566,7 +566,7 @@ abstract class CompileServiceImplBase(
         k2jvmArgs: K2JVMCompilerArguments,
         incrementalCompilationOptions: IncrementalCompilationOptions,
         compilerMessageCollector: MessageCollector,
-        reporter: ICReporter
+        reporter: RemoteICReporter
     ): ExitCode {
         val allKotlinExtensions = (DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS +
                 (incrementalCompilationOptions.kotlinScriptExtensions ?: emptyArray())).distinct()
@@ -617,7 +617,7 @@ abstract class CompileServiceImplBase(
         return try {
             compiler.compile(allKotlinFiles, k2jvmArgs, compilerMessageCollector, changedFiles)
         } finally {
-            (reporter as RemoteICReporter).flush()
+            reporter.flush()
         }
     }
 
