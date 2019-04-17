@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.codegen.inline.ReifiedTypeInliner.OperationKind.SAFE
 import org.jetbrains.kotlin.codegen.pseudoInsns.fakeAlwaysFalseIfeq
 import org.jetbrains.kotlin.codegen.pseudoInsns.fixStackAndJump
 import org.jetbrains.kotlin.codegen.signature.BothSignatureWriter
-import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.config.isReleaseCoroutines
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.impl.TypeAliasConstructorDescriptor
@@ -36,7 +35,6 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.DescriptorUtils.isEnumClass
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
-import org.jetbrains.kotlin.resolve.inline.InlineUtil
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes.OBJECT_TYPE
 import org.jetbrains.kotlin.synthetic.SyntheticJavaPropertyDescriptor
@@ -62,17 +60,22 @@ class TryInfo(val onExit: IrExpression) : ExpressionInfo() {
     val gaps = mutableListOf<Pair<Label, Label>>()
 }
 
-class BlockInfo private constructor(val parent: BlockInfo?) {
-    val variables = mutableListOf<VariableInfo>()
-    val infos = Stack<ExpressionInfo>()
+class ReturnableBlockInfo(
+    val returnLabel: Label,
+    val returnSymbol: IrSymbol,
+    val returnTemporary: Int? = null
+) : ExpressionInfo()
 
-    fun create() = BlockInfo(this).apply {
-        this@apply.infos.addAll(this@BlockInfo.infos)
-    }
+class BlockInfo(val parent: BlockInfo? = null) {
+    val variables = mutableListOf<VariableInfo>()
+    private val infos: Stack<ExpressionInfo> = parent?.infos ?: Stack()
 
     fun hasFinallyBlocks(): Boolean = infos.firstIsInstanceOrNull<TryInfo>() != null
 
-    inline fun <T : ExpressionInfo, R> withBlock(info: T, f: (T) -> R): R {
+    internal inline fun <reified T : ExpressionInfo> findBlock(predicate: (T) -> Boolean): T? =
+        infos.find { it is T && predicate(it) } as? T
+
+    internal inline fun <T : ExpressionInfo, R> withBlock(info: T, f: (T) -> R): R {
         infos.add(info)
         try {
             return f(info)
@@ -81,7 +84,7 @@ class BlockInfo private constructor(val parent: BlockInfo?) {
         }
     }
 
-    inline fun <R> handleBlock(f: (ExpressionInfo) -> R): R? {
+    internal inline fun <R> handleBlock(f: (ExpressionInfo) -> R): R? {
         if (infos.isEmpty()) {
             return null
         }
@@ -91,10 +94,6 @@ class BlockInfo private constructor(val parent: BlockInfo?) {
         } finally {
             infos.add(top)
         }
-    }
-
-    companion object {
-        fun create() = BlockInfo(null)
     }
 }
 
@@ -166,7 +165,7 @@ class ExpressionCodegen(
     fun generate() {
         mv.visitCode()
         val startLabel = markNewLabel()
-        val info = BlockInfo.create()
+        val info = BlockInfo()
         val body = irFunction.body!!
         val result = body.accept(this, info)
         // If this function has an expression body, return the result of that expression.
@@ -182,25 +181,26 @@ class ExpressionCodegen(
             result.coerce(returnType).materialize()
             mv.areturn(returnType)
         }
-        writeLocalVariablesInTable(info)
-        writeParameterInLocalVariableTable(startLabel)
+        val endLabel = markNewLabel()
+        writeLocalVariablesInTable(info, endLabel)
+        writeParameterInLocalVariableTable(startLabel, endLabel)
         mv.visitEnd()
     }
 
-    private fun writeParameterInLocalVariableTable(startLabel: Label) {
+    private fun writeParameterInLocalVariableTable(startLabel: Label, endLabel: Label) {
         if (!irFunction.isStatic) {
-            mv.visitLocalVariable("this", classCodegen.type.descriptor, null, startLabel, markNewLabel(), 0)
+            mv.visitLocalVariable("this", classCodegen.type.descriptor, null, startLabel, endLabel, 0)
         }
         val extensionReceiverParameter = irFunction.extensionReceiverParameter
         if (extensionReceiverParameter != null) {
-            writeValueParameterInLocalVariableTable(extensionReceiverParameter, startLabel)
+            writeValueParameterInLocalVariableTable(extensionReceiverParameter, startLabel, endLabel)
         }
         for (param in irFunction.valueParameters) {
-            writeValueParameterInLocalVariableTable(param, startLabel)
+            writeValueParameterInLocalVariableTable(param, startLabel, endLabel)
         }
     }
 
-    private fun writeValueParameterInLocalVariableTable(param: IrValueParameter, startLabel: Label) {
+    private fun writeValueParameterInLocalVariableTable(param: IrValueParameter, startLabel: Label, endLabel: Label) {
         val descriptor = param.descriptor
         val nameForDestructuredParameter = if (descriptor is ValueParameterDescriptor) {
             getNameForDestructuredParameterOrNull(descriptor)
@@ -212,22 +212,43 @@ class ExpressionCodegen(
         // NOTE: we expect all value parameters to be present in the frame.
         mv.visitLocalVariable(
             nameForDestructuredParameter ?: param.name.asString(),
-            type.descriptor, null, startLabel, markNewLabel(), findLocalIndex(param.symbol)
+            type.descriptor, null, startLabel, endLabel, findLocalIndex(param.symbol)
         )
     }
 
     override fun visitBlock(expression: IrBlock, data: BlockInfo): PromisedValue {
         if (expression.isTransparentScope)
             return super.visitBlock(expression, data)
-        val info = data.create()
-        // Force materialization to avoid reading from out-of-scope variables.
-        return super.visitBlock(expression, info).materialized.apply {
-            writeLocalVariablesInTable(info)
+        val info = BlockInfo(data)
+        return if (expression is IrReturnableBlock) {
+            val returnType = expression.asmType
+            val returnLabel = Label()
+            // Because the return might be inside an expression, it will need to pop excess items
+            // before jumping and store the result in a temporary variable.
+            val returnTemporary = if (returnType != Type.VOID_TYPE) frameMap.enterTemp(returnType) else null
+            info.withBlock(ReturnableBlockInfo(returnLabel, expression.symbol, returnTemporary)) {
+                // Remember current stack depth.
+                mv.fakeAlwaysFalseIfeq(returnLabel)
+                super.visitBlock(expression, info).materialized.also {
+                    returnTemporary?.let { mv.store(it, returnType) }
+                    // Variables leave the scope in reverse order, so must write locals first.
+                    mv.mark(returnLabel)
+                    writeLocalVariablesInTable(info, returnLabel)
+                    returnTemporary?.let {
+                        mv.load(it, returnType)
+                        frameMap.leaveTemp(returnType)
+                    }
+                }
+            }
+        } else {
+            // Force materialization to avoid reading from out-of-scope variables.
+            super.visitBlock(expression, info).materialized.also {
+                writeLocalVariablesInTable(info, markNewLabel())
+            }
         }
     }
 
-    private fun writeLocalVariablesInTable(info: BlockInfo) {
-        val endLabel = markNewLabel()
+    private fun writeLocalVariablesInTable(info: BlockInfo, endLabel: Label) {
         info.variables.forEach {
             when (it.declaration.origin) {
                 IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
@@ -613,15 +634,21 @@ class ExpressionCodegen(
             return voidValue
         }
 
+        val target = data.findBlock<ReturnableBlockInfo> { it.returnSymbol == expression.returnTargetSymbol }
         val returnType = typeMapper.mapReturnType(owner.descriptor)
         val afterReturnLabel = Label()
         expression.value.accept(this, data).coerce(returnType).materialize()
-        generateFinallyBlocksIfNeeded(returnType, afterReturnLabel, data)
+        generateFinallyBlocksIfNeeded(returnType, afterReturnLabel, data, target)
         expression.markLineNumber(startOffset = true)
-        if (isNonLocalReturn) {
-            generateGlobalReturnFlag(mv, (owner as IrFunction).name.asString())
+        if (target != null) {
+            target.returnTemporary?.let { mv.store(it, returnType) }
+            mv.fixStackAndJump(target.returnLabel)
+        } else {
+            if (isNonLocalReturn) {
+                generateGlobalReturnFlag(mv, (owner as IrFunction).name.asString())
+            }
+            mv.areturn(returnType)
         }
-        mv.areturn(returnType)
         mv.mark(afterReturnLabel)
         mv.nop()/*TODO check RESTORE_STACK_IN_TRY_CATCH processor*/
         return voidValue
@@ -808,20 +835,18 @@ class ExpressionCodegen(
         return voidValue
     }
 
-    private fun unwindBlockStack(endLabel: Label, data: BlockInfo, loop: IrLoop? = null): LoopInfo? {
+    private fun unwindBlockStack(endLabel: Label, data: BlockInfo, stop: (ExpressionInfo) -> Boolean): ExpressionInfo? {
         return data.handleBlock {
-            when {
-                it is TryInfo -> genFinallyBlock(it, null, endLabel, data)
-                it is LoopInfo && it.loop == loop -> return it
-            }
-            unwindBlockStack(endLabel, data, loop)
+            if (it is TryInfo)
+                genFinallyBlock(it, null, endLabel, data)
+            return if (stop(it)) it else unwindBlockStack(endLabel, data, stop)
         }
     }
 
     override fun visitBreakContinue(jump: IrBreakContinue, data: BlockInfo): PromisedValue {
         jump.markLineNumber(startOffset = true)
         val endLabel = Label()
-        val stackElement = unwindBlockStack(endLabel, data, jump.loop)
+        val stackElement = unwindBlockStack(endLabel, data) { it is LoopInfo && it.loop == jump.loop } as LoopInfo?
             ?: throw AssertionError("Target label for break/continue not found")
         mv.fixStackAndJump(if (jump is IrBreak) stackElement.breakLabel else stackElement.continueLabel)
         mv.mark(endLabel)
@@ -953,16 +978,16 @@ class ExpressionCodegen(
         tryInfo.gaps.add(gapStart to (afterJumpLabel ?: markNewLabel()))
     }
 
-    fun generateFinallyBlocksIfNeeded(returnType: Type, afterReturnLabel: Label, data: BlockInfo) {
+    fun generateFinallyBlocksIfNeeded(returnType: Type, afterReturnLabel: Label, data: BlockInfo, target: ReturnableBlockInfo? = null) {
         if (data.hasFinallyBlocks()) {
             if (Type.VOID_TYPE != returnType) {
                 val returnValIndex = frameMap.enterTemp(returnType)
                 mv.store(returnValIndex, returnType)
-                unwindBlockStack(afterReturnLabel, data, null)
+                unwindBlockStack(afterReturnLabel, data) { it == target }
                 mv.load(returnValIndex, returnType)
                 frameMap.leaveTemp(returnType)
             } else {
-                unwindBlockStack(afterReturnLabel, data, null)
+                unwindBlockStack(afterReturnLabel, data) { it == target }
             }
         }
     }
