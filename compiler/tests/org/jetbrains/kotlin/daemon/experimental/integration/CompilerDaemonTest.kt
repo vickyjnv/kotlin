@@ -50,7 +50,7 @@ import kotlin.script.templates.ScriptTemplateDefinition
 import kotlin.test.fail
 import org.jetbrains.kotlin.daemon.client.experimental.*
 import org.jetbrains.kotlin.daemon.common.experimental.*
-import org.jetbrains.kotlin.daemon.common.experimental.LoopbackNetworkInterface
+import org.jetbrains.kotlin.daemon.common.experimental.LoopbackNetworkInterfaceKtor
 
 val TIMEOUT_DAEMON_RUNNER_EXIT_MS = 10000L
 

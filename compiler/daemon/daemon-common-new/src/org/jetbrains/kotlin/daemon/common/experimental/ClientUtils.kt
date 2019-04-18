@@ -99,9 +99,9 @@ private inline fun tryConnectToDaemonByRMI(port: Int, report: (DaemonReportCateg
         val daemon = runBlocking {
             runWithTimeout(2 * DAEMON_PERIODIC_CHECK_INTERVAL_MS) {
                 LocateRegistry.getRegistry(
-                    LoopbackNetworkInterface.loopbackInetAddressName,
+                    org.jetbrains.kotlin.daemon.common.LoopbackNetworkInterface.loopbackInetAddressName,
                     port,
-                    LoopbackNetworkInterface.clientLoopbackSocketFactoryRMI
+                    org.jetbrains.kotlin.daemon.common.LoopbackNetworkInterface.clientLoopbackSocketFactory
                 )?.lookup(COMPILER_SERVICE_RMI_NAME)
             }
         }
