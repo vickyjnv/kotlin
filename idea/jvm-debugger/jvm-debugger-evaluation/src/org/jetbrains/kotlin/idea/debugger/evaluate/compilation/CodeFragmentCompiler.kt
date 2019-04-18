@@ -90,7 +90,7 @@ class CodeFragmentCompiler(private val executionContext: ExecutionContext) {
         val classes = generationState.factory.asList().filterClassFiles()
             .map { ClassToLoad(it.internalClassName, it.relativePath, it.asByteArray()) }
 
-        val methodSignature = getMethodSignature(methodDescriptor, parameterInfo.parameters, generationState)
+        val methodSignature = getMethodSignature(methodDescriptor, parameterInfo, generationState)
         val functionSuffixes = getLocalFunctionSuffixes(parameterInfo.parameters, generationState.typeMapper)
 
         generationState.destroy()
@@ -119,13 +119,14 @@ class CodeFragmentCompiler(private val executionContext: ExecutionContext) {
 
     private fun getMethodSignature(
         methodDescriptor: FunctionDescriptor,
-        parameters: List<CodeFragmentParameter.Smart>,
+        parameterInfo: CodeFragmentParameterInfo,
         state: GenerationState
     ): MethodSignature {
         val typeMapper = state.typeMapper
         val asmSignature = typeMapper.mapSignatureSkipGeneric(methodDescriptor)
-        val asmParameters = parameters.zip(asmSignature.valueParameters).map { (param, sigParam) ->
-            getSharedTypeIfApplicable(param.targetDescriptor, typeMapper) ?: sigParam.asmType
+
+        val asmParameters = parameterInfo.parameters.zip(asmSignature.valueParameters).map { (param, sigParam) ->
+            getSharedTypeIfApplicable(param, typeMapper) ?: sigParam.asmType
         }
 
         return MethodSignature(asmParameters, asmSignature.returnType)
