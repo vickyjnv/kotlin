@@ -1,5 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 description = "Kotlin compiler client embeddable"
 
 plugins {
@@ -7,22 +5,22 @@ plugins {
     kotlin("jvm")
 }
 
-val jarContents by configurations.creating
 val testRuntimeCompilerJar by configurations.creating
 val testStdlibJar by configurations.creating
 val testScriptRuntimeJar by configurations.creating
-val archives by configurations
 
 dependencies {
-    jarContents(project(":compiler:cli-common")) { isTransitive = false }
-    jarContents(project(":compiler:daemon-common")) { isTransitive = false }
-    jarContents(projectRuntimeJar(":kotlin-daemon-client"))
+    embedded(project(":compiler:cli-common")) { isTransitive = false }
+    embedded(project(":compiler:daemon-common")) { isTransitive = false }
+    embedded(projectRuntimeJar(":kotlin-daemon-client"))
+
     testCompile(project(":compiler:cli-common"))
     testCompile(project(":compiler:daemon-common"))
     testCompile(projectRuntimeJar(":kotlin-daemon-client"))
     testCompile(commonDep("junit:junit"))
     testCompile(project(":kotlin-test:kotlin-test-jvm"))
     testCompile(project(":kotlin-test:kotlin-test-junit"))
+
     testRuntimeCompilerJar(project(":kotlin-compiler"))
     testStdlibJar(kotlinStdlib())
     testScriptRuntimeJar(project(":kotlin-script-runtime"))
@@ -51,11 +49,8 @@ projectTest {
 
 publish()
 
-noDefaultJar()
-
-runtimeJar(task<ShadowJar>("shadowJar")) {
-    from(jarContents)
-}
+runtimeJar()
 
 sourcesJar()
+
 javadocJar()
