@@ -11,12 +11,6 @@ interface KotlinJsOptions  : org.jetbrains.kotlin.gradle.dsl.KotlinCommonOptions
      var friendModulesDisabled: kotlin.Boolean
 
     /**
-     * Use IR backend
-     * Default value: false
-     */
-     var irBackend: kotlin.Boolean
-
-    /**
      * Whether a main function should be called
      * Possible values: "call", "noCall"
      * Default value: "call"

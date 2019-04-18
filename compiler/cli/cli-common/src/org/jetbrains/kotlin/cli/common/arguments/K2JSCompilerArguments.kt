@@ -104,14 +104,13 @@ class K2JSCompilerArguments : CommonCompilerArguments() {
     // Advanced options
 
 
-    @GradleOption(DefaultValues.BooleanFalseDefault::class)
     @Argument(value = "-Xir", description = "Use IR backend")
     var irBackend: Boolean by FreezableVar(false)
 
     @Argument(
         value = "-Xir-produce-only",
         valueDescription = "{ klib, js }",
-        description = "Type of output to produce. Overrides all other arguments."
+        description = "Type of output to produce. Overrides -meta-info argument."
     )
     var irProduceOnly: String? by NullableStringFreezableVar(null)
 

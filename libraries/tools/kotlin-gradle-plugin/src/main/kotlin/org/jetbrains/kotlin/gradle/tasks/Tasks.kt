@@ -567,14 +567,20 @@ open class Kotlin2JsCompile : AbstractKotlinCompile<K2JSCompilerArguments>(), Ko
         logger.debug("Calling compiler")
         destinationDir.mkdirs()
 
+        val libraryFilter: (File) -> Boolean
+
+        if ("-Xir" in args.freeArgs) {
+            logger.kotlinDebug("Using JS IR backend")
+            incremental = false
+
+            // TODO: Detect IR libraries
+            libraryFilter = { true }
+        } else {
+            libraryFilter = LibraryUtils::isKotlinJavascriptLibrary
+        }
+
         val dependencies = compileClasspath
-            .filter {
-                if (args.irBackend)
-                    // TODO: Detect IR libraries
-                    true
-                else
-                    LibraryUtils.isKotlinJavascriptLibrary(it)
-            }
+            .filter(libraryFilter)
             .map { it.canonicalPath }
 
         args.libraries = (dependencies + listOfNotNull(friendDependency)).distinct().let {
@@ -595,8 +601,7 @@ open class Kotlin2JsCompile : AbstractKotlinCompile<K2JSCompilerArguments>(), Ko
         val outputItemCollector = OutputItemsCollectorImpl()
         val compilerRunner = compilerRunner()
 
-        // Incremental compilation is not supported in IR backend yet
-        val icEnv = if (incremental && !args.irBackend) {
+        val icEnv = if (incremental) {
             logger.info(USING_JS_INCREMENTAL_COMPILATION_MESSAGE)
             IncrementalCompilationEnvironment(
                 if (hasFilesInTaskBuildDirectory()) changedFiles else ChangedFiles.Unknown(),

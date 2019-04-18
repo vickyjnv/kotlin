@@ -46,13 +46,6 @@ internal abstract class KotlinJsOptionsBase : org.jetbrains.kotlin.gradle.dsl.Ko
             friendModulesDisabledField = value
         }
 
-    private var irBackendField: kotlin.Boolean? = null
-    override var irBackend: kotlin.Boolean
-        get() = irBackendField ?: false
-        set(value) {
-            irBackendField = value
-        }
-
     private var mainField: kotlin.String? = null
     override var main: kotlin.String
         get() = mainField ?: "call"
@@ -130,7 +123,6 @@ internal abstract class KotlinJsOptionsBase : org.jetbrains.kotlin.gradle.dsl.Ko
         apiVersionField?.let { args.apiVersion = it }
         languageVersionField?.let { args.languageVersion = it }
         friendModulesDisabledField?.let { args.friendModulesDisabled = it }
-        irBackendField?.let { args.irBackend = it }
         mainField?.let { args.main = it }
         metaInfoField?.let { args.metaInfo = it }
         moduleKindField?.let { args.moduleKind = it }
@@ -151,7 +143,6 @@ internal fun org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments.fil
     apiVersion = null
     languageVersion = null
     friendModulesDisabled = false
-    irBackend = false
     main = "call"
     metaInfo = true
     moduleKind = "plain"

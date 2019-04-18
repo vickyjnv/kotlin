@@ -43,7 +43,6 @@ import org.jetbrains.kotlin.utils.KotlinPaths
 import org.jetbrains.kotlin.utils.join
 import java.io.File
 import java.io.IOException
-import java.util.*
 import java.util.zip.ZipFile
 
 enum class ProduceKind {
@@ -320,32 +319,31 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
     }
 
     override fun executableScriptFileName(): String {
-        return "kotlinc-js-ir"
+        return "kotlinc-js -Xir"
     }
 
     override fun createMetadataVersion(versionArray: IntArray): BinaryVersion {
+        // TODO: Support metadata versions for klibs
         return JsMetadataVersion(*versionArray)
     }
 
     companion object {
-        private val moduleKindMap = HashMap<String, ModuleKind>()
-        private val sourceMapContentEmbeddingMap = LinkedHashMap<String, SourceMapSourceEmbedding>()
+        private val moduleKindMap = mapOf(
+            K2JsArgumentConstants.MODULE_PLAIN to ModuleKind.PLAIN,
+            K2JsArgumentConstants.MODULE_COMMONJS to ModuleKind.COMMON_JS,
+            K2JsArgumentConstants.MODULE_AMD to ModuleKind.AMD,
+            K2JsArgumentConstants.MODULE_UMD to ModuleKind.UMD
+        )
+        private val sourceMapContentEmbeddingMap = mapOf(
+            K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_ALWAYS to SourceMapSourceEmbedding.ALWAYS,
+            K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_NEVER to SourceMapSourceEmbedding.NEVER,
+            K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_INLINING to SourceMapSourceEmbedding.INLINING
+        )
         private val produceMap = mapOf(
             null to ProduceKind.DEFAULT,
             "js" to ProduceKind.JS,
             "klib" to ProduceKind.KLIB
         )
-
-        init {
-            moduleKindMap[K2JsArgumentConstants.MODULE_PLAIN] = ModuleKind.PLAIN
-            moduleKindMap[K2JsArgumentConstants.MODULE_COMMONJS] = ModuleKind.COMMON_JS
-            moduleKindMap[K2JsArgumentConstants.MODULE_AMD] = ModuleKind.AMD
-            moduleKindMap[K2JsArgumentConstants.MODULE_UMD] = ModuleKind.UMD
-
-            sourceMapContentEmbeddingMap[K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_ALWAYS] = SourceMapSourceEmbedding.ALWAYS
-            sourceMapContentEmbeddingMap[K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_NEVER] = SourceMapSourceEmbedding.NEVER
-            sourceMapContentEmbeddingMap[K2JsArgumentConstants.SOURCE_MAP_SOURCE_CONTENT_INLINING] = SourceMapSourceEmbedding.INLINING
-        }
 
         @JvmStatic
         fun main(args: Array<String>) {
