@@ -103,6 +103,19 @@ class K2JSCompilerArguments : CommonCompilerArguments() {
 
     // Advanced options
 
+
+    @GradleOption(DefaultValues.BooleanFalseDefault::class)
+    @Argument(value = "-Xir", description = "Use IR backend")
+    var irBackend: Boolean by FreezableVar(false)
+
+    @Argument(
+        value = "-Xir-produce-only",
+        valueDescription = "{ klib, js }",
+        description = "Type of output to produce. Overrides all other arguments."
+    )
+    var irProduceOnly: String? by NullableStringFreezableVar(null)
+
+
     @GradleOption(DefaultValues.BooleanTrueDefault::class)
     @Argument(value = "-Xtyped-arrays", description = "Translate primitive arrays to JS typed arrays")
     var typedArrays: Boolean by FreezableVar(true)

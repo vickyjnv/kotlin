@@ -83,6 +83,7 @@ import static org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.*
 public class K2JSCompiler extends CLICompiler<K2JSCompilerArguments> {
     private static final Map<String, ModuleKind> moduleKindMap = new HashMap<>();
     private static final Map<String, SourceMapSourceEmbedding> sourceMapContentEmbeddingMap = new LinkedHashMap<>();
+    private final K2JsIrCompiler irCompiler = new K2JsIrCompiler();
 
     static {
         moduleKindMap.put(K2JsArgumentConstants.MODULE_PLAIN, ModuleKind.PLAIN);
@@ -162,6 +163,10 @@ public class K2JSCompiler extends CLICompiler<K2JSCompilerArguments> {
             @Nullable KotlinPaths paths
     ) {
         MessageCollector messageCollector = configuration.getNotNull(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY);
+
+        if (arguments.getIrBackend()) {
+            return irCompiler.doExecute(arguments, configuration, rootDisposable, paths);
+        }
 
         if (arguments.getFreeArgs().isEmpty() && !IncrementalCompilation.isEnabledForJs()) {
             if (arguments.getVersion()) {
@@ -362,6 +367,11 @@ public class K2JSCompiler extends CLICompiler<K2JSCompilerArguments> {
             @NotNull CompilerConfiguration configuration, @NotNull K2JSCompilerArguments arguments,
             @NotNull Services services
     ) {
+        if (arguments.getIrBackend()) {
+            irCompiler.setupPlatformSpecificArgumentsAndServices(configuration, arguments, services);
+            return;
+        }
+
         MessageCollector messageCollector = configuration.getNotNull(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY);
 
         if (arguments.getTarget() != null) {
