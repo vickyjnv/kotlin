@@ -35,7 +35,7 @@ dependencies {
         embedded(commonDep("net.rubygrapefruit", "native-platform", "-$it"))
     }
     runtime(project(":kotlin-reflect"))
-    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8")) {
+    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-core")) {
         isTransitive = false
     }
 }

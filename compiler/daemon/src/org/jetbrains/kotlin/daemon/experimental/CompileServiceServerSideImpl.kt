@@ -355,7 +355,7 @@ class CompileServiceServerSideImpl(
             val messageCollector =
                 CompileServicesFacadeMessageCollector(servicesFacade, compilationOptions)
             val repl = KotlinJvmReplServiceAsync(
-                disposable, serverSocketWithPort, templateClasspath, templateClassName,
+                disposable, serverSocketWithPort, compilerId, templateClasspath, templateClassName,
                 messageCollector
             )
             val sessionId = state.sessions.leaseSession(ClientOrSessionProxy(aliveFlagPath, repl, disposable))

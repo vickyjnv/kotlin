@@ -15,7 +15,7 @@ dependencies {
     compileOnly(project(":js:js.frontend"))
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }
     compileOnly(intellijDep()) { includeIntellijCoreJarDependencies(project) }
-    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8")) {
+    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-core")) {
         isTransitive = false
     }
 }

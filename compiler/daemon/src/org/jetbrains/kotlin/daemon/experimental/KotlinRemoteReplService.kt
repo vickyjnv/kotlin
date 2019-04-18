@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.daemon.experimental
 import com.intellij.openapi.Disposable
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.repl.IReplStageState
-import org.jetbrains.kotlin.cli.jvm.repl.GenericReplCompilerState
 import org.jetbrains.kotlin.daemon.KotlinJvmReplServiceBase
 import org.jetbrains.kotlin.daemon.common.CompileService
 import org.jetbrains.kotlin.daemon.common.CompilerId
@@ -32,11 +31,7 @@ open class KotlinJvmReplServiceAsync(
 
     suspend fun createRemoteState(port: ServerSocketWrapper = portForServers): RemoteReplStateFacadeServerSide = statesLock.write {
         val id = getValidId(stateIdCounter) { id -> states.none { it.key.getId() == id } }
-        val stateFacade = RemoteReplStateFacadeServerSide(
-            id,
-            createState().asState(GenericReplCompilerState::class.java),
-            port
-        )
+        val stateFacade = RemoteReplStateFacadeServerSide(id, createState(), port)
         stateFacade.runServer()
         states.put(stateFacade, true)
         stateFacade

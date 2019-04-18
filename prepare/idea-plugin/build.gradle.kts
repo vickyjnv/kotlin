@@ -126,6 +126,8 @@ dependencies {
     libraries(project(":kotlin-reflect"))
     libraries(project(":kotlin-compiler-client-embeddable"))
     libraries(project(":kotlin-daemon-client"))
+    libraries(project(":kotlin-daemon-client-new"))
+    libraries(project(":kotlin-daemon"))
     libraries(project(":kotlin-script-runtime"))
     libraries(project(":kotlin-script-util"))
     libraries(project(":kotlin-scripting-common"))

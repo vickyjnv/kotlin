@@ -25,9 +25,9 @@ dependencies {
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }
     runtime(project(":kotlin-reflect"))
 
-    embeddedComponents(project(":daemon-common")) { isTransitive = false }
-    embeddedComponents(project(":daemon-common-new")) { isTransitive = false }
-    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8")) {
+    embedded(project(":daemon-common")) { isTransitive = false }
+    embedded(project(":daemon-common-new")) { isTransitive = false }
+    compile(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-core")) {
         isTransitive = false
     }
     compile(commonDep("io.ktor", "ktor-network")) {
@@ -48,7 +48,6 @@ noDefaultJar()
 
 runtimeJar(task<ShadowJar>("shadowJar")) {
     from(mainSourceSet.output)
-    fromEmbeddedComponents()
 }
 
 sourcesJar()
@@ -56,5 +55,3 @@ sourcesJar()
 javadocJar()
 
 dist()
-
-ideaPlugin()
