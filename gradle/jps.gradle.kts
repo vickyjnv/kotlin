@@ -54,6 +54,8 @@ if (kotlinBuildProperties.isInJpsBuildIdeaSync) {
 
                         kotlinPluginJar()
 
+                        kotlinCompilerClientEmbeddableJar()
+
                         kotlinMainKtsJar()
 
                         kotlinImportsDumperCompilerPluginJar()
@@ -173,6 +175,9 @@ val jarArtifactProjects = listOf(
     "kotlin-main-kts",
     "kotlin-reflect"
 )
+
+fun NamedDomainObjectContainer<TopLevelArtifact>.kotlinCompilerClientEmbeddableJar() =
+    jarFromProject(project(":kotlin-compiler-client-embeddable"))
 
 fun NamedDomainObjectContainer<TopLevelArtifact>.kotlinMainKtsJar() =
     jarFromProject(project(":kotlin-main-kts"))
