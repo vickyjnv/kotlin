@@ -601,18 +601,14 @@ abstract class CompileServiceImplBase(
             }
         }
 
-        val outputFiles = incrementalCompilationOptions.outputFiles.toMutableList()
-        incrementalCompilationOptions.classpathFqNamesHistory?.let { outputFiles.add(it) }
-
         val compiler = IncrementalJvmCompilerRunner(
             workingDir,
             reporter,
             buildHistoryFile = incrementalCompilationOptions.multiModuleICSettings.buildHistoryFile,
-            outputFiles = outputFiles,
+            outputFiles = incrementalCompilationOptions.outputFiles,
             usePreciseJavaTracking = incrementalCompilationOptions.usePreciseJavaTracking,
             modulesApiHistory = modulesApiHistory,
-            kotlinSourceFilesExtensions = allKotlinExtensions,
-            classpathFqNamesHistory = incrementalCompilationOptions.classpathFqNamesHistory
+            kotlinSourceFilesExtensions = allKotlinExtensions
         )
         return try {
             compiler.compile(allKotlinFiles, k2jvmArgs, compilerMessageCollector, changedFiles)
@@ -825,7 +821,7 @@ class CompileServiceImpl(
             )
             val messageCollector = KeepFirstErrorMessageCollector(compilerMessagesStream)
             val repl = KotlinJvmReplService(
-                disposable, port, templateClasspath, templateClassName,
+                disposable, port, compilerId, templateClasspath, templateClassName,
                 messageCollector, operationsTracer
             )
             val sessionId = state.sessions.leaseSession(ClientOrSessionProxy(aliveFlagPath, repl, disposable))
@@ -909,7 +905,7 @@ class CompileServiceImpl(
             val disposable = Disposer.newDisposable()
             val messageCollector = CompileServicesFacadeMessageCollector(servicesFacade, compilationOptions)
             val repl = KotlinJvmReplService(
-                disposable, port, templateClasspath, templateClassName,
+                disposable, port, compilerId, templateClasspath, templateClassName,
                 messageCollector, null
             )
             val sessionId = state.sessions.leaseSession(ClientOrSessionProxy(aliveFlagPath, repl, disposable))
