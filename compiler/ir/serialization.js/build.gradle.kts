@@ -35,14 +35,7 @@ val builtInsHeader = """@file:Suppress(
 )
 """
 
-val runtimeSourcesDestinationPath = "$buildDir/fullRuntime/src"
-val reducedRuntimeSourcesDestinationPath ="$buildDir/reducedRuntime/src"
-
-val fullRuntimeSources by task<Copy> {
-
-    doFirst {
-        delete(runtimeSourcesDestinationPath)
-    }
+val fullRuntimeSources by task<Sync> {
 
     val sources = listOf(
         "core/builtins/src/kotlin/",
@@ -83,7 +76,7 @@ val fullRuntimeSources by task<Copy> {
         }
     }
 
-    into(runtimeSourcesDestinationPath)
+    into("$buildDir/fullRuntime/src")
 
     doLast {
         unimplementedNativeBuiltIns.forEach { path ->
@@ -94,12 +87,8 @@ val fullRuntimeSources by task<Copy> {
     }
 }
 
-val reducedRuntimeSources by task<Copy> {
+val reducedRuntimeSources by task<Sync> {
     dependsOn(fullRuntimeSources)
-
-    doFirst {
-        delete(reducedRuntimeSourcesDestinationPath)
-    }
 
     from(fullRuntimeSources.outputs.files.singleFile) {
         exclude(
@@ -160,7 +149,7 @@ val reducedRuntimeSources by task<Copy> {
         into("libraries/stdlib/js-ir/runtime/")
     }
 
-    into(reducedRuntimeSourcesDestinationPath)
+    into("$buildDir/reducedRuntime/src")
 }
 
 

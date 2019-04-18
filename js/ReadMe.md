@@ -13,7 +13,7 @@ The Kotlin Standard Library for JS is built with gradle, see the corresponding m
 
 Any Kotlin test cases using the **org.junit.Test** annotation and the [kotlin.test](../libraries/kotlin.test) package, such as [this test case](../libraries/stdlib/test/text/StringNumberConversionTest.kt#L16) are automatically converted to JavaScript using [QUnit](https://qunitjs.com/).
 
-This allows the test cases to be [run directly in a web page in any web browser](../libraries/stdlib/js/ReadMe.md).
+This allows the test cases to be [run directly in a web page in any web browser](../libraries/stdlib/js-v1/ReadMe.md).
 
 ## Using the Kotlin Library in JavaScript
 
