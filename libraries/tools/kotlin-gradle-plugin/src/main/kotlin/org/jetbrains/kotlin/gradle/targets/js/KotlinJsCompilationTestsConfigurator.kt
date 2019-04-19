@@ -56,16 +56,14 @@ internal class KotlinJsCompilationTestsConfigurator(
             testJs.configureConventions()
         }
 
-        testJs.doGetTask().useNodeJs { }
-
         registerTestTask(testJs)
 
-//        project.afterEvaluate {
-//            testJs.configure {
-//                if (it.testFramework == null) {
-//                    it.useNodeJs { }
-//                }
-//            }
-//        }
+        project.afterEvaluate {
+            testJs.configure {
+                if (it.testFramework == null) {
+                    it.useNodeJs { }
+                }
+            }
+        }
     }
 }
