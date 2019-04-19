@@ -25,7 +25,7 @@ public abstract class CharIterator : R|kotlin/collections/Iterator<kotlin/Char>|
 
 }
 
-public abstract interface Collection<E> : R|kotlin/collections/Iterable<E>| {
+public abstract interface Collection<out E> : R|kotlin/collections/Iterable<E>| {
     public abstract operator fun contains(element: R|E|): R|kotlin/Boolean|
 
     public abstract fun containsAll(elements: R|kotlin/collections/Collection<E>|): R|kotlin/Boolean|
@@ -33,6 +33,9 @@ public abstract interface Collection<E> : R|kotlin/collections/Iterable<E>| {
     public abstract fun isEmpty(): R|kotlin/Boolean|
 
     public abstract operator fun iterator(): R|kotlin/collections/Iterator<E>|
+
+    public abstract val size: R|kotlin/Int|
+        public get(): R|kotlin/Int|
 
 }
 
@@ -63,19 +66,19 @@ public abstract class IntIterator : R|kotlin/collections/Iterator<kotlin/Int>| {
 
 }
 
-public abstract interface Iterable<T> : R|kotlin/Any| {
+public abstract interface Iterable<out T> : R|kotlin/Any| {
     public abstract operator fun iterator(): R|kotlin/collections/Iterator<T>|
 
 }
 
-public abstract interface Iterator<T> : R|kotlin/Any| {
+public abstract interface Iterator<out T> : R|kotlin/Any| {
     public abstract operator fun hasNext(): R|kotlin/Boolean|
 
     public abstract operator fun next(): R|T|
 
 }
 
-public abstract interface List<E> : R|kotlin/collections/Collection<E>| {
+public abstract interface List<out E> : R|kotlin/collections/Collection<E>| {
     public abstract operator fun contains(element: R|E|): R|kotlin/Boolean|
 
     public abstract fun containsAll(elements: R|kotlin/collections/Collection<E>|): R|kotlin/Boolean|
@@ -96,9 +99,12 @@ public abstract interface List<E> : R|kotlin/collections/Collection<E>| {
 
     public abstract fun subList(fromIndex: R|kotlin/Int|, toIndex: R|kotlin/Int|): R|kotlin/collections/List<E>|
 
+    public abstract val size: R|kotlin/Int|
+        public get(): R|kotlin/Int|
+
 }
 
-public abstract interface ListIterator<T> : R|kotlin/collections/Iterator<T>| {
+public abstract interface ListIterator<out T> : R|kotlin/collections/Iterator<T>| {
     public abstract operator fun hasNext(): R|kotlin/Boolean|
 
     public abstract fun hasPrevious(): R|kotlin/Boolean|
@@ -122,18 +128,36 @@ public abstract class LongIterator : R|kotlin/collections/Iterator<kotlin/Long>|
 
 }
 
-public abstract interface Map<K, V> : R|kotlin/Any| {
+public abstract interface Map<K, out V> : R|kotlin/Any| {
     public abstract fun containsKey(key: R|K|): R|kotlin/Boolean|
 
     public abstract fun containsValue(value: R|V|): R|kotlin/Boolean|
 
     public abstract operator fun get(key: R|K|): R|V|
 
-    public open fun getOrDefault(key: R|K|, defaultValue: R|V|): R|V|
+    @R|kotlin/SinceKotlin|(version = String(1.1)) @R|kotlin/internal/PlatformDependent|() public open fun getOrDefault(key: R|K|, defaultValue: R|V|): R|V|
 
     public abstract fun isEmpty(): R|kotlin/Boolean|
 
-    public abstract interface Entry<K, V> : R|kotlin/Any| {
+    public abstract val entries: R|kotlin/collections/Set<kotlin/collections/Map.Entry<K, V>>|
+        public get(): R|kotlin/collections/Set<kotlin/collections/Map.Entry<K, V>>|
+
+    public abstract val keys: R|kotlin/collections/Set<K>|
+        public get(): R|kotlin/collections/Set<K>|
+
+    public abstract val size: R|kotlin/Int|
+        public get(): R|kotlin/Int|
+
+    public abstract val values: R|kotlin/collections/Collection<V>|
+        public get(): R|kotlin/collections/Collection<V>|
+
+    public abstract interface Entry<out K, out V> : R|kotlin/Any| {
+        public abstract val key: R|K|
+            public get(): R|K|
+
+        public abstract val value: R|V|
+            public get(): R|V|
+
     }
 
 }
@@ -155,12 +179,12 @@ public abstract interface MutableCollection<E> : R|kotlin/collections/Collection
 
 }
 
-public abstract interface MutableIterable<T> : R|kotlin/collections/Iterable<T>| {
+public abstract interface MutableIterable<out T> : R|kotlin/collections/Iterable<T>| {
     public abstract operator fun iterator(): R|kotlin/collections/MutableIterator<T>|
 
 }
 
-public abstract interface MutableIterator<T> : R|kotlin/collections/Iterator<T>| {
+public abstract interface MutableIterator<out T> : R|kotlin/collections/Iterator<T>| {
     public abstract fun remove(): R|kotlin/Unit|
 
 }
@@ -216,7 +240,16 @@ public abstract interface MutableMap<K, V> : R|kotlin/collections/Map<K, V>| {
 
     public abstract fun remove(key: R|K|): R|V|
 
-    public open fun remove(key: R|K|, value: R|V|): R|kotlin/Boolean|
+    @R|kotlin/SinceKotlin|(version = String(1.1)) @R|kotlin/internal/PlatformDependent|() public open fun remove(key: R|K|, value: R|V|): R|kotlin/Boolean|
+
+    public abstract val entries: R|kotlin/collections/MutableSet<kotlin/collections/MutableMap.MutableEntry<K, V>>|
+        public get(): R|kotlin/collections/MutableSet<kotlin/collections/MutableMap.MutableEntry<K, V>>|
+
+    public abstract val keys: R|kotlin/collections/MutableSet<K>|
+        public get(): R|kotlin/collections/MutableSet<K>|
+
+    public abstract val values: R|kotlin/collections/MutableCollection<V>|
+        public get(): R|kotlin/collections/MutableCollection<V>|
 
     public abstract interface MutableEntry<K, V> : R|kotlin/collections/Map.Entry<K, V>| {
         public abstract fun setValue(newValue: R|V|): R|V|
@@ -242,7 +275,7 @@ public abstract interface MutableSet<E> : R|kotlin/collections/Set<E>|, R|kotlin
 
 }
 
-public abstract interface Set<E> : R|kotlin/collections/Collection<E>| {
+public abstract interface Set<out E> : R|kotlin/collections/Collection<E>| {
     public abstract operator fun contains(element: R|E|): R|kotlin/Boolean|
 
     public abstract fun containsAll(elements: R|kotlin/collections/Collection<E>|): R|kotlin/Boolean|
@@ -250,6 +283,9 @@ public abstract interface Set<E> : R|kotlin/collections/Collection<E>| {
     public abstract fun isEmpty(): R|kotlin/Boolean|
 
     public abstract operator fun iterator(): R|kotlin/collections/Iterator<E>|
+
+    public abstract val size: R|kotlin/Int|
+        public get(): R|kotlin/Int|
 
 }
 
