@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.MultiTargetPlatform
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.storage.StorageManager
-import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.utils.sure
 
 class ModuleDescriptorImpl @JvmOverloads constructor(
@@ -139,17 +138,11 @@ class ModuleDescriptorImpl @JvmOverloads constructor(
 
 
     private val scopes = storageManager.createCacheWithNotNullValues<ClassDescriptor, MemberScope>()
-    private val supertypes = storageManager.createCacheWithNotNullValues<ClassifierDescriptor, Collection<KotlinType>>()
 
     override fun <S : MemberScope> getOrPutScopeForClass(classDescriptor: ClassDescriptor, compute: () -> S): S {
         @Suppress("UNCHECKED_CAST")
         return scopes.computeIfAbsent(classDescriptor, compute) as S
     }
-
-    override fun getOrPutSupertypesForForClass(
-        classifierDescriptor: ClassifierDescriptor,
-        compute: () -> Collection<KotlinType>
-    ): Collection<KotlinType> = supertypes.computeIfAbsent(classifierDescriptor, compute)
 }
 
 interface ModuleDependencies {
