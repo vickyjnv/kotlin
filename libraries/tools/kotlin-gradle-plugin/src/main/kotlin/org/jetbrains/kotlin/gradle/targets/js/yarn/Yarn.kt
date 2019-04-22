@@ -31,16 +31,6 @@ object Yarn : NpmApi {
         val nodeJsEnv = NodeJsPlugin.apply(project).root.environment
         val yarnEnv = YarnPlugin.apply(project).environment
 
-        val packageJsonHashFile = project.packageJsonHashFile
-        val packageJsonHash = if (packageJsonHashFile.exists()) packageJsonHashFile.readText() else null
-
-        val hasher = (project as ProjectInternal).services.get(FileHasher::class.java)
-        val hash = hasher.hash(npmProject.packageJsonFile).toByteArray().toHexString()
-
-        if (packageJsonHash == hash) return
-
-        packageJsonHashFile.writeText(hash)
-
         val nodeWorkDir = npmProject.nodeWorkDir
 
         project.execWithProgress(description) { exec ->
@@ -48,6 +38,7 @@ object Yarn : NpmApi {
             exec.args = listOf(yarnEnv.home.resolve("bin/yarn.js").absolutePath) + args
             exec.workingDir = nodeWorkDir
         }
+
     }
 
     private fun yarnLockReadTransitiveDependencies(
@@ -95,8 +86,10 @@ object Yarn : NpmApi {
     override fun resolveProject(npmPackage: NpmResolver.NpmPackage) {
         val project = npmPackage.project
         if (!project.yarn.useWorkspaces) {
-            yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
-            yarnLockReadTransitiveDependencies(NpmProject[project].nodeWorkDir, npmPackage.npmDependencies)
+            YarnAvoidance(project).updateIfNeeded {
+                yarnExec(project, NpmApi.resolveOperationDescription("yarn for ${project.path}"))
+                yarnLockReadTransitiveDependencies(NpmProject[project].nodeWorkDir, npmPackage.npmDependencies)
+            }
         }
     }
 
@@ -129,8 +122,7 @@ object Yarn : NpmApi {
         check(rootProject == rootProject.rootProject)
 
         if (rootProject.yarn.useWorkspaces) {
-            yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
-            yarnLockReadTransitiveDependencies(NpmProject[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
+            resolveWorkspaces(rootProject, subprojects)
         } else {
             if (subprojects.any { it.project != rootProject }) {
                 // todo: proofread message
@@ -143,6 +135,24 @@ object Yarn : NpmApi {
                             "Gradle, will be overridden during build and should be ignored in VCS."
                 )
             }
+        }
+    }
+
+    private fun resolveWorkspaces(
+        rootProject: Project,
+        subprojects: MutableList<NpmResolver.NpmPackage>
+    ) {
+        val upToDateChecks = subprojects.map {
+            YarnAvoidance(it.project)
+        }
+
+        if (upToDateChecks.all { it.upToDate }) return
+
+        yarnExec(rootProject, NpmApi.resolveOperationDescription("yarn"))
+        yarnLockReadTransitiveDependencies(NpmProject[rootProject].nodeWorkDir, subprojects.flatMap { it.npmDependencies })
+
+        upToDateChecks.forEach {
+            it.commit()
         }
     }
 
