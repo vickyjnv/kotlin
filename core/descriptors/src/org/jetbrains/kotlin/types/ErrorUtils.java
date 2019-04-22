@@ -147,14 +147,6 @@ public class ErrorUtils {
                     @NotNull ClassDescriptor classDescriptor, @NotNull Function0<? extends S> compute) {
                 return compute.invoke();
             }
-
-            @NotNull
-            @Override
-            public Collection<KotlinType> getOrPutSupertypesForForClass(
-                    @NotNull ClassifierDescriptor classifierDescriptor, @NotNull Function0<? extends Collection<KotlinType>> compute
-            ) {
-                return compute.invoke();
-            }
         };
     }
 
