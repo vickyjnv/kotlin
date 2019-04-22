@@ -16,6 +16,8 @@
 
 package org.jetbrains.kotlin.js.resolve.diagnostics
 
+import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.config.refineTypeIfNeeded
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.diagnostics.DiagnosticSink
 import org.jetbrains.kotlin.diagnostics.Errors
@@ -33,7 +35,8 @@ import org.jetbrains.kotlin.resolve.scopes.MemberScope
 
 class JsNameClashChecker(
     private val nameSuggestion: NameSuggestion,
-    private val moduleDescriptor: ModuleDescriptor
+    private val moduleDescriptor: ModuleDescriptor,
+    private val languageVersionSettings: LanguageVersionSettings
 ) : DeclarationChecker {
     companion object {
         private val COMMON_DIAGNOSTICS = setOf(
@@ -149,7 +152,10 @@ class JsNameClashChecker(
                         .flatMap { module.getPackage(it).fragments }
                         .forEach { collect(it, scope)  }
             }
-            is ClassDescriptor -> collect(descriptor.defaultType.memberScope, scope)
+            is ClassDescriptor -> collect(
+                descriptor.defaultType.refineTypeIfNeeded(moduleDescriptor, languageVersionSettings).memberScope,
+                scope
+            )
         }
         scope
     }
