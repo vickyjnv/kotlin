@@ -555,7 +555,7 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractLineMarkersTest> {
-            model("codeInsight/lineMarker")
+            model("codeInsight/lineMarker", pattern = KT_OR_KTS)
         }
 
         testClass<AbstractLineMarkersTestInLibrarySources> {

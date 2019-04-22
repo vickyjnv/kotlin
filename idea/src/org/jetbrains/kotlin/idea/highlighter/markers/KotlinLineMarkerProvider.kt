@@ -85,7 +85,7 @@ class KotlinLineMarkerProvider : LineMarkerProvider {
         if (elements.isEmpty()) return
 
         val first = elements.first()
-        if (DumbService.getInstance(first.project).isDumb || !ProjectRootsUtil.isInProjectOrLibSource(first)) return
+        if (DumbService.getInstance(first.project).isDumb || !ProjectRootsUtil.isInProjectOrLibSource(first, true)) return
 
         val functions = hashSetOf<KtNamedFunction>()
         val properties = hashSetOf<KtNamedDeclaration>()

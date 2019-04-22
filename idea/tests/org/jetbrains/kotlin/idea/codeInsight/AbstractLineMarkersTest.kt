@@ -18,6 +18,7 @@ import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.UsefulTestCase
 import junit.framework.TestCase
+import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesManager
 import org.jetbrains.kotlin.idea.highlighter.markers.TestableLineMarkerNavigator
 import org.jetbrains.kotlin.idea.navigation.NavigationTestUtils
 import org.jetbrains.kotlin.idea.test.ConfigLibraryUtil
@@ -91,6 +92,10 @@ abstract class AbstractLineMarkersTest : KotlinLightCodeInsightFixtureTestCase()
             data.init()
 
             PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+            if ((myFixture.file as? KtFile)?.isScript() == true) {
+                ScriptDependenciesManager.updateScriptDependenciesSynchronously(myFixture.file.virtualFile, myFixture.project)
+            }
 
             val markers = doAndCheckHighlighting(document, data, File(path))
 
