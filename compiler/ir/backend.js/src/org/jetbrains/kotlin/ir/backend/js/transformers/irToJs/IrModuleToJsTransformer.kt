@@ -171,7 +171,7 @@ class IrModuleToJsTransformer(
         }
 
         program.globalBlock.statements += ModuleWrapperTranslation.wrap(
-            moduleName,
+            sanitizeName(moduleName),
             rootFunction,
             importedJsModules,
             program,
@@ -222,12 +222,7 @@ class IrModuleToJsTransformer(
                 .forEach { declaration ->
                     val declName = getNameForExternalDeclaration(declaration)
                     importStatements.add(
-                        JsExpressionStatement(
-                            jsAssignment(
-                                declName.makeRef(),
-                                JsNameRef(declName, qualifiedReference)
-                            )
-                        )
+                        JsVars(JsVars.JsVar(declName, JsNameRef(declName, qualifiedReference)))
                     )
                 }
         }
