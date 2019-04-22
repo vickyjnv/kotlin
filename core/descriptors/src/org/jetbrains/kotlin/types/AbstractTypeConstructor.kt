@@ -109,12 +109,6 @@ abstract class AbstractTypeConstructor(private val storageManager: StorageManage
                 supertypes.supertypesWithoutCycles = (resultWithoutCycles as? List<KotlinType>) ?: resultWithoutCycles.toList()
             })
 
-    private fun Collection<KotlinType>.refineIfNeeded(moduleDescriptor: ModuleDescriptor?) =
-        if (moduleDescriptor == null)
-            this
-        else
-            map { it.refine(moduleDescriptor) }
-
     private fun TypeConstructor.computeNeighbours(useCompanions: Boolean): Collection<KotlinType> =
         (this as? AbstractTypeConstructor)?.let { abstractClassifierDescriptor ->
             abstractClassifierDescriptor.supertypes().allSupertypes +
