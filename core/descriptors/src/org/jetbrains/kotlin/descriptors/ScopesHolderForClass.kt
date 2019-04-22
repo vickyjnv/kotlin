@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.storage.getValue
 import org.jetbrains.kotlin.types.TypeConstructor
-import org.jetbrains.kotlin.types.isExpectClass
 import org.jetbrains.kotlin.utils.DFS
 
 class ScopesHolderForClass<T : MemberScope> private constructor(
@@ -65,3 +64,5 @@ fun TypeConstructor.areThereExpectSupertypes(): Boolean {
 
     return result
 }
+
+private fun TypeConstructor.isExpectClass() = true
