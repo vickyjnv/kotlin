@@ -72,6 +72,7 @@ object DescriptorEquivalenceForOverrides {
         if (a.name != b.name) return false
         if (a.containingDeclaration == b.containingDeclaration) {
             if (a.singleSource() != b.singleSource()) return false
+            if (a is MemberDescriptor && b is MemberDescriptor && a.isExpect != b.isExpect) return false
         }
 
         // Distinct locals are not equivalent
