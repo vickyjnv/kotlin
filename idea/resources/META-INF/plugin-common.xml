@@ -224,6 +224,9 @@
     <applicationService serviceInterface="org.jetbrains.kotlin.psi.stubs.elements.StubIndexService"
                         serviceImplementation="org.jetbrains.kotlin.idea.stubindex.IdeStubIndexService"/>
 
+    <applicationService serviceInterface="org.jetbrains.kotlin.psi.KotlinReferenceProvidersService"
+                        serviceImplementation="org.jetbrains.kotlin.idea.references.KtIdeReferenceProviderService"/>
+
     <applicationService serviceInterface="org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache"
                         serviceImplementation="org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache"/>
 
