@@ -1,0 +1,65 @@
+description = 'Kotlin Test for JS IR'
+
+apply plugin: 'kotlin-platform-js'
+
+configureDist(project)
+configurePublishing(project)
+
+dependencies {
+    expectedBy project(':kotlin-test:kotlin-test-common')
+    expectedBy project(':kotlin-test:kotlin-test-annotations-common')
+    compile project(':kotlin-stdlib-js-ir')
+}
+
+compileKotlin2Js {
+    kotlinOptions {
+        moduleKind = "umd"
+        freeCompilerArgs = [
+                "-Xir",
+                "-Xir-produce-only=klib",
+                "-Xallow-kotlin-package",
+                "-Xuse-experimental=kotlin.contracts.ExperimentalContracts",
+        ]
+    }
+}
+
+sourceSets {
+    main {
+        kotlin {
+            srcDir "${projectDir}/../js/src"
+        }
+    }
+}
+
+compileTestKotlin2Js {
+    kotlinOptions.freeCompilerArgs = [
+        "-Xir",
+        "-Xir-produce-only=js",
+        "-Xallow-kotlin-package",
+    ]
+    kotlinOptions {
+        metaInfo = false
+        moduleKind = "umd"
+    }
+}
+
+archivesBaseName = 'kotlin-test-js-ir'
+
+jar {
+    manifestAttributes(manifest, project, 'Test')
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from (sourceSets.main.allSource)
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+javadocJar()
+
+dist {
+    from (jar, sourcesJar)
+}
