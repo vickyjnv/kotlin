@@ -21,6 +21,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.diagnostics.Diagnostic
 import org.jetbrains.kotlin.diagnostics.Errors
+import org.jetbrains.kotlin.idea.caches.resolve.findModuleDescriptor
 import org.jetbrains.kotlin.idea.core.quickfix.QuickFixUtil
 import org.jetbrains.kotlin.idea.intentions.SpecifyTypeExplicitlyIntention
 import org.jetbrains.kotlin.psi.KtFile
@@ -79,6 +80,7 @@ open class RemovePartsFromPropertyFix(
         }
         val replaceElement = element?.replace(newElement) as? KtProperty
         if (replaceElement != null && typeToAdd != null) {
+            typeToAdd = typeToAdd.refine(replaceElement.findModuleDescriptor())
             SpecifyTypeExplicitlyIntention.addTypeAnnotation(editor, replaceElement, typeToAdd)
         }
     }
