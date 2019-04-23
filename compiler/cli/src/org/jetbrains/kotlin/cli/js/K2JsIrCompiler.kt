@@ -99,10 +99,17 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 libraryFile
         }
 
-        val klibFiles = klibDir.listFiles()
+        var klibFiles = klibDir.listFiles()
         if (klibFiles.isEmpty()) {
             messageCollector.report(STRONG_WARNING, "Klib $library directory is empty")
             return null
+        }
+
+        // Sometines gradle gives us a directory with klib directory inside
+        val klibDirInsideDir = klibFiles.find { it.name.endsWith("KLIB") }
+        if (klibDirInsideDir != null) {
+            klibDir = klibDirInsideDir
+            klibFiles = klibDir.listFiles()
         }
 
         val metadataFile = klibFiles.find { it.extension == "klm" }
