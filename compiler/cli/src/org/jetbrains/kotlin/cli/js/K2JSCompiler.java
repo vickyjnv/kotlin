@@ -84,10 +84,10 @@ public class K2JSCompiler extends CLICompiler<K2JSCompilerArguments> {
     private static final Map<String, ModuleKind> moduleKindMap = new HashMap<>();
     private static final Map<String, SourceMapSourceEmbedding> sourceMapContentEmbeddingMap = new LinkedHashMap<>();
 
-    private static K2JsIrCompiler irCompiler = null;
+    private K2JsIrCompiler irCompiler = null;
 
     @NotNull
-    private static K2JsIrCompiler getIrCompiler() {
+    private K2JsIrCompiler getIrCompiler() {
         if (irCompiler == null)
             irCompiler = new K2JsIrCompiler();
         return irCompiler;
