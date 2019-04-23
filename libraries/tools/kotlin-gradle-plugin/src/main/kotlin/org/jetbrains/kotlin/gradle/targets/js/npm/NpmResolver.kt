@@ -8,15 +8,20 @@ package org.jetbrains.kotlin.gradle.targets.js.npm
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import org.gradle.api.Project
+import org.gradle.api.file.CopySpec
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinSingleTargetExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtensionOrNull
+import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
+import org.jetbrains.kotlin.gradle.targets.js.internal.RewriteSourceMapFilterReader
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.nodeJs
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolver.ResolutionCallResult.*
+import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 
 /**
  * Generates `package.json` file for projects with npm or js dependencies and
@@ -81,7 +86,9 @@ internal class NpmResolver private constructor(val rootProject: Project) {
         val npmDependencies: Set<NpmDependency>
     ) {
         fun savePackageJson(gson: Gson) {
-            NpmProject[project].packageJsonFile.writer().use {
+            val packageJsonFile = NpmProject[project].packageJsonFile
+            packageJsonFile.ensureParentDirsCreated()
+            packageJsonFile.writer().use {
                 gson.toJson(packageJson, it)
             }
         }
@@ -97,7 +104,7 @@ internal class NpmResolver private constructor(val rootProject: Project) {
 
     private fun resolve(
         project: Project,
-        parentGradleModules: GradleNodeModules?
+        parentGradleModules: GradleNodeModulesBuilder?
     ): Boolean {
         val existedProcess = ProjectData[project]
         if (existedProcess != null) {
@@ -113,7 +120,7 @@ internal class NpmResolver private constructor(val rootProject: Project) {
 
         val gradleModules =
             if (hoistGradleNodeModules && parentGradleModules != null) parentGradleModules
-            else GradleNodeModules(project)
+            else GradleNodeModulesBuilder(project)
 
         project.subprojects.forEach {
             resolve(it, gradleModules)
@@ -145,7 +152,7 @@ internal class NpmResolver private constructor(val rootProject: Project) {
 
     private fun extractNpmPackage(
         project: Project,
-        gradleComponents: GradleNodeModules
+        gradleComponents: GradleNodeModulesBuilder
     ): NpmPackage? {
         val packageJson = PackageJson(project.name, project.version.toString())
         val npmDependencies = mutableSetOf<NpmDependency>()
@@ -163,26 +170,27 @@ internal class NpmResolver private constructor(val rootProject: Project) {
             it(packageJson)
         }
 
-        val packageJsonRequired = if (project == rootProject) {
-            packageManager.hookRootPackage(rootProject, packageJson, npmPackages)
-        } else false
+        val packageJsonRequired =
+            if (project == rootProject) packageManager.hookRootPackage(rootProject, packageJson, npmPackages)
+            else false
 
-        return if (packageJsonRequired || !packageJson.empty) NpmPackage(project, packageJson, npmDependencies) else null
+        return if (!packageJsonRequired && packageJson.empty) null
+        else NpmPackage(project, packageJson, npmDependencies)
     }
 
     private fun visitNpmDependencies(
         project: Project,
         npmDependencies: MutableSet<NpmDependency>,
-        gradleComponents: GradleNodeModules,
+        gradleComponents: GradleNodeModulesBuilder,
         packageJson: PackageJson
     ) {
         val kotlin = project.kotlinExtensionOrNull
 
         if (kotlin != null) {
             when (kotlin) {
-                is KotlinSingleTargetExtension -> visitTarget(kotlin.target, project, npmDependencies, gradleComponents)
+                is KotlinSingleTargetExtension -> visitTarget(kotlin.target, project, npmDependencies, gradleComponents, packageJson)
                 is KotlinMultiplatformExtension -> kotlin.targets.forEach {
-                    visitTarget(it, project, npmDependencies, gradleComponents)
+                    visitTarget(it, project, npmDependencies, gradleComponents, packageJson)
                 }
             }
 
@@ -199,7 +207,8 @@ internal class NpmResolver private constructor(val rootProject: Project) {
         target: KotlinTarget,
         project: Project,
         npmDependencies: MutableSet<NpmDependency>,
-        gradleComponents: GradleNodeModules
+        gradleComponents: GradleNodeModulesBuilder,
+        packageJson: PackageJson
     ) {
         if (target.platformType == KotlinPlatformType.js) {
             target.compilations.toList().forEach { compilation ->
@@ -212,6 +221,54 @@ internal class NpmResolver private constructor(val rootProject: Project) {
                 }
 
                 gradleComponents.visitCompilation(compilation)
+
+                if (compilation is KotlinJsCompilation) {
+                    visitKotlinJsCompilation(project, compilation)
+
+                    if (compilation.name == "main") {
+                        packageJson.main = compilation.compileKotlinTask.outputFile.name
+                    }
+                }
+            }
+        }
+    }
+
+    private fun visitKotlinJsCompilation(
+        project: Project,
+        compilation: KotlinJsCompilation
+    ) {
+        val npmProject = project.npmProject
+        val kotlin2JsCompile = compilation.compileKotlinTask
+        if (npmProject.compileOutputCopyDest != null) {
+            if (kotlin2JsCompile.outputFile.exists()) {
+                visitCompile(project.npmProject, kotlin2JsCompile)
+            }
+
+            kotlin2JsCompile.doLast {
+                visitCompile(project.npmProject, kotlin2JsCompile)
+            }
+        }
+    }
+
+    private fun visitCompile(npmProject: NpmProject, kotlin2JsCompile: Kotlin2JsCompile) {
+        npmProject.project.copy { copy ->
+            copy.from(kotlin2JsCompile.outputFile)
+            copy.from(kotlin2JsCompile.outputFile.path + ".map")
+            copy.into(npmProject.compileOutputCopyDest!!)
+            copy.withSourceMapRewriter(npmProject)
+        }
+    }
+
+    private fun CopySpec.withSourceMapRewriter(npmProject: NpmProject) {
+        eachFile {
+            if (it.name.endsWith(".js.map")) {
+                it.filter(
+                    mapOf(
+                        "srcSourceRoot" to it.file.parentFile,
+                        "targetSourceRoot" to npmProject.compileOutputCopyDest!!
+                    ),
+                    RewriteSourceMapFilterReader::class.java
+                )
             }
         }
     }
