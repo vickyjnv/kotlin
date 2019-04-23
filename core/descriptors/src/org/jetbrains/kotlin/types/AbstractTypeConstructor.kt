@@ -57,8 +57,7 @@ abstract class AbstractTypeConstructor(private val storageManager: StorageManage
 
         override fun equals(other: Any?) = this@AbstractTypeConstructor.equals(other)
         override fun hashCode() = this@AbstractTypeConstructor.hashCode()
-
-        override fun toString() = "$moduleDescriptor: ${this@AbstractTypeConstructor}"
+        override fun toString() = this@AbstractTypeConstructor.toString()
     }
 
     // In current version diagnostic about loops in supertypes is reported on each vertex (supertype reference) that lies on the cycle.
