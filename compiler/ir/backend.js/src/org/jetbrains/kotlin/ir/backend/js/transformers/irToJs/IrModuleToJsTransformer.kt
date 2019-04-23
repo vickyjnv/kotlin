@@ -171,7 +171,7 @@ class IrModuleToJsTransformer(
         }
 
         program.globalBlock.statements += ModuleWrapperTranslation.wrap(
-            moduleName,
+            sanitizeName(moduleName),
             rootFunction,
             importedJsModules,
             program,

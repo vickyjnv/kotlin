@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.descriptors.isSuspend
 import org.jetbrains.kotlin.backend.common.ir.isElseBranch
 import org.jetbrains.kotlin.ir.backend.js.utils.JsGenerationContext
 import org.jetbrains.kotlin.ir.backend.js.utils.Namer
+import org.jetbrains.kotlin.ir.backend.js.utils.sanitizeName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.js.backend.ast.*
@@ -92,7 +93,7 @@ fun defineProperty(receiver: JsExpression, name: String, value: () -> JsExpressi
 
 
 fun defineProperty(receiver: JsExpression, name: String, getter: JsExpression?, setter: JsExpression? = null) =
-    defineProperty(receiver, name) {
+    defineProperty(receiver, sanitizeName(name)) {
         val literal = JsObjectLiteral(true)
         literal.apply {
             if (getter != null)
