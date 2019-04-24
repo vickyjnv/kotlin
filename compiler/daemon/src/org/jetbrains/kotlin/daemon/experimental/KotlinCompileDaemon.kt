@@ -75,4 +75,9 @@ object KotlinCompileDaemon : KotlinCompileDaemonBase() {
     override fun awaitServerRun(serverRun: Any?) {
         runBlocking { (serverRun as Deferred<Unit>?)?.await() }
     }
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        mainImpl(args)
+    }
 }

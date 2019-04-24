@@ -102,7 +102,7 @@ abstract class KotlinCompileDaemonBase {
 
     protected open fun awaitServerRun(serverRun: Any?) {}
 
-    protected fun main(args: Array<String>) {
+    protected fun mainImpl(args: Array<String>) {
         ensureServerHostnameIsSetUp()
 
         val jvmArguments = ManagementFactory.getRuntimeMXBean().inputArguments
@@ -181,6 +181,11 @@ abstract class KotlinCompileDaemonBase {
 }
 
 object KotlinCompileDaemon : KotlinCompileDaemonBase() {
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        mainImpl(args)
+    }
 
     override fun getCompileServiceAndPort(
         compilerSelector: CompilerSelector,
