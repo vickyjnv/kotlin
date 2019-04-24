@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.types.KotlinType;
 import org.jetbrains.kotlin.types.KotlinTypeKt;
 import org.jetbrains.kotlin.types.TypeConstructor;
 import org.jetbrains.kotlin.types.TypeUtils;
-import org.jetbrains.kotlin.types.checker.KotlinTypeChecker;
+import org.jetbrains.kotlin.types.checker.RefineKotlinTypeChecker;
 import org.jetbrains.kotlin.types.expressions.typeInfoFactory.TypeInfoFactoryKt;
 import org.jetbrains.kotlin.util.OperatorNameConventions;
 
@@ -62,6 +62,7 @@ public class DataFlowAnalyzer {
     private final EffectSystem effectSystem;
     private final DataFlowValueFactory dataFlowValueFactory;
     private final SmartCastManager smartCastManager;
+    private final RefineKotlinTypeChecker refineKotlinTypeChecker;
 
     public DataFlowAnalyzer(
             @NotNull Iterable<AdditionalTypeChecker> additionalTypeCheckers,
@@ -72,7 +73,8 @@ public class DataFlowAnalyzer {
             @NotNull LanguageVersionSettings languageVersionSettings,
             @NotNull EffectSystem effectSystem,
             @NotNull DataFlowValueFactory factory,
-            @NotNull SmartCastManager smartCastManager
+            @NotNull SmartCastManager smartCastManager,
+            @NotNull RefineKotlinTypeChecker refineKotlinTypeChecker
     ) {
         this.additionalTypeCheckers = additionalTypeCheckers;
         this.constantExpressionEvaluator = constantExpressionEvaluator;
@@ -83,6 +85,7 @@ public class DataFlowAnalyzer {
         this.effectSystem = effectSystem;
         this.dataFlowValueFactory = factory;
         this.smartCastManager = smartCastManager;
+        this.refineKotlinTypeChecker = refineKotlinTypeChecker;
     }
 
     // NB: use this method only for functions from 'Any'
@@ -285,7 +288,7 @@ public class DataFlowAnalyzer {
             boolean reportErrorForTypeMismatch
     ) {
         if (noExpectedType(c.expectedType) || !c.expectedType.getConstructor().isDenotable() ||
-            KotlinTypeChecker.DEFAULT.isSubtypeOf(expressionType, c.expectedType)) {
+            refineKotlinTypeChecker.isSubtypeOf(expressionType, c.expectedType)) {
             return expressionType;
         }
 
