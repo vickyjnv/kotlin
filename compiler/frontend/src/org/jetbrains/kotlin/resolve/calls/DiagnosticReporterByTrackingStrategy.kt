@@ -32,7 +32,8 @@ class DiagnosticReporterByTrackingStrategy(
     val constantExpressionEvaluator: ConstantExpressionEvaluator,
     val context: BasicCallResolutionContext,
     val psiKotlinCall: PSIKotlinCall,
-    val dataFlowValueFactory: DataFlowValueFactory
+    val dataFlowValueFactory: DataFlowValueFactory,
+    private val smartCastManager: SmartCastManager
 ) : DiagnosticReporter {
     private val trace = context.trace as TrackingBindingTrace
     private val tracingStrategy: TracingStrategy get() = psiKotlinCall.tracingStrategy
@@ -169,7 +170,7 @@ class DiagnosticReporterByTrackingStrategy(
                     context.statementFilter
                 )
                 val dataFlowValue = dataFlowValueFactory.createDataFlowValue(expressionArgument.receiver.receiverValue, context)
-                SmartCastManager.checkAndRecordPossibleCast(
+                smartCastManager.checkAndRecordPossibleCast(
                     dataFlowValue, smartCastDiagnostic.smartCastType, argumentExpression, context, call,
                     recordExpressionType = true
                 )
@@ -178,7 +179,7 @@ class DiagnosticReporterByTrackingStrategy(
                 trace.markAsReported()
                 val receiverValue = expressionArgument.receiver.receiverValue
                 val dataFlowValue = dataFlowValueFactory.createDataFlowValue(receiverValue, context)
-                SmartCastManager.checkAndRecordPossibleCast(
+                smartCastManager.checkAndRecordPossibleCast(
                     dataFlowValue, smartCastDiagnostic.smartCastType, (receiverValue as? ExpressionReceiver)?.expression, context, call,
                     recordExpressionType = true
                 )
@@ -255,7 +256,6 @@ class DiagnosticReporterByTrackingStrategy(
     }
 
 }
-
 
 val NewConstraintError.upperKotlinType get() = upperType as KotlinType
 val NewConstraintError.lowerKotlinType get() = lowerType as KotlinType
