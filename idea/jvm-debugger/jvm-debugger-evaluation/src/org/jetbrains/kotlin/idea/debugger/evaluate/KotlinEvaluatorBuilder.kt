@@ -47,6 +47,8 @@ import org.jetbrains.kotlin.idea.core.util.mergeAttachments
 import org.jetbrains.kotlin.idea.core.util.runInReadActionWithWriteActionPriorityWithPCE
 import org.jetbrains.kotlin.idea.debugger.DebuggerUtils
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.Companion.compileCodeFragmentCacheAware
+import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.GENERATED_CLASS_NAME
+import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.GENERATED_FUNCTION_NAME
 import org.jetbrains.kotlin.idea.debugger.evaluate.compilation.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.compilingEvaluator.loadClassesSafely
 import org.jetbrains.kotlin.idea.debugger.evaluate.variables.EvaluatorValueConverter
@@ -54,7 +56,6 @@ import org.jetbrains.kotlin.idea.debugger.evaluate.variables.VariableFinder
 import org.jetbrains.kotlin.idea.debugger.safeLocation
 import org.jetbrains.kotlin.idea.debugger.safeMethod
 import org.jetbrains.kotlin.idea.debugger.safeVisibleVariableByName
-import org.jetbrains.kotlin.idea.runInReadActionWithWriteActionPriorityWithPCE
 import org.jetbrains.kotlin.idea.util.application.executeWriteCommand
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.psi.*
@@ -66,9 +67,7 @@ import org.jetbrains.org.objectweb.asm.*
 import org.jetbrains.org.objectweb.asm.tree.ClassNode
 import java.util.*
 
-internal val LOG = Logger.getInstance("#org.jetbrains.kotlin.idea.debugger.evaluate.KotlinEvaluator")
-internal const val GENERATED_FUNCTION_NAME = "generated_for_debugger_fun"
-internal const val GENERATED_CLASS_NAME = "Generated_for_debugger_class"
+internal val LOG = Logger.getInstance(KotlinEvaluator::class.java)
 
 object KotlinEvaluatorBuilder : EvaluatorBuilder {
     override fun build(codeFragment: PsiElement, position: SourcePosition?): ExpressionEvaluator {

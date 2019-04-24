@@ -22,7 +22,6 @@ import com.sun.jdi.ClassLoaderReference
 import com.sun.jdi.Value
 import jdk.internal.org.objectweb.asm.Opcodes
 import org.jetbrains.kotlin.idea.debugger.evaluate.ExecutionContext
-import org.jetbrains.kotlin.idea.debugger.evaluate.GENERATED_FUNCTION_NAME
 import org.jetbrains.org.objectweb.asm.ClassReader
 import org.jetbrains.org.objectweb.asm.Label
 import org.jetbrains.org.objectweb.asm.tree.*

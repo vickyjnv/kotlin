@@ -19,6 +19,8 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.ClassToLoad
+import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.GENERATED_CLASS_NAME
+import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.GENERATED_FUNCTION_NAME
 import org.jetbrains.kotlin.idea.debugger.evaluate.compilation.CompiledDataDescriptor.MethodSignature
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.util.application.runReadAction
