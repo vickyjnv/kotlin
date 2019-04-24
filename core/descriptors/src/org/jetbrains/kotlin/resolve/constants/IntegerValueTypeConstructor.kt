@@ -26,7 +26,7 @@ import java.util.*
 class IntegerValueTypeConstructor(
     private val value: Long,
     private val module: ModuleDescriptor,
-    parameters: CompileTimeConstant.Parameters
+    private val parameters: CompileTimeConstant.Parameters
 ) : TypeConstructor {
     private val supertypes = ArrayList<KotlinType>(4)
 
@@ -92,10 +92,7 @@ class IntegerValueTypeConstructor(
     }
 
     override fun refine(moduleDescriptor: ModuleDescriptor) =
-        IntegerValueTypeConstructor(
-            value, moduleDescriptor,
-            CompileTimeConstant.Parameters(true, isDenotable, isDenotable, isDenotable, true, true, isDenotable)
-        )
+        IntegerValueTypeConstructor(value, moduleDescriptor, parameters)
 
     override fun toString() = "IntegerValueType($value)"
 }
