@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.frontend.di
 import org.jetbrains.kotlin.analyzer.common.CommonPlatform
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.LanguageVersionSettingsImpl
+import org.jetbrains.kotlin.config.RefineKotlinTypeCheckerImpl
 import org.jetbrains.kotlin.config.TargetPlatformVersion
 import org.jetbrains.kotlin.container.StorageComponentContainer
 import org.jetbrains.kotlin.container.get
@@ -74,6 +75,8 @@ private fun StorageComponentContainer.configurePlatformIndependentComponents() {
     useImpl<ExperimentalUsageChecker.Overrides>()
     useImpl<ExperimentalUsageChecker.ClassifierUsage>()
     useImpl<ClassicTypeSystemContextForCS>()
+
+    useImpl<RefineKotlinTypeCheckerImpl>()
 }
 
 fun StorageComponentContainer.configureModule(
