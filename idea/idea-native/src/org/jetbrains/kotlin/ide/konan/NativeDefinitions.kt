@@ -6,22 +6,28 @@
 package org.jetbrains.kotlin.ide.konan
 
 import com.intellij.extapi.psi.PsiFileBase
-import com.intellij.lang.*
+import com.intellij.lang.ASTNode
+import com.intellij.lang.Language
+import com.intellij.lang.ParserDefinition
+import com.intellij.lang.PsiParser
 import com.intellij.lexer.FlexAdapter
 import com.intellij.lexer.Lexer
-import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
-import com.intellij.psi.tree.*
-import javax.swing.Icon
-import java.io.Reader
-import org.jetbrains.kotlin.ide.konan.psi.*
+import com.intellij.psi.tree.IElementType
+import com.intellij.psi.tree.IFileElementType
+import com.intellij.psi.tree.TokenSet
+import org.jetbrains.kotlin.ide.konan.psi.NativeDefinitionsCodeImpl
+import org.jetbrains.kotlin.ide.konan.psi.NativeDefinitionsTypes
 import org.jetbrains.kotlin.idea.KotlinIcons
 import org.jetbrains.kotlin.konan.library.KDEFINITIONS_FILE_EXTENSION
+import java.io.Reader
+import javax.swing.Icon
 
 
 const val NATIVE_DEFINITIONS_NAME = "KND"
@@ -82,7 +88,7 @@ class CLanguageInjector : LanguageInjector {
         if (!host.isValid) return
 
         if (host is NativeDefinitionsCodeImpl && cLanguage != null) {
-            val range = host.getTextRange().shiftLeft(host.startOffsetInParent)
+            val range = host.getTextRange().shiftLeft(1)
             registrar.addPlace(cLanguage, range, null, null)
         }
     }
