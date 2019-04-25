@@ -79,16 +79,21 @@ class JavaResolverComponents(
 
 interface JavaResolverSettings {
     val isReleaseCoroutines: Boolean
+    val useRefinedTypes: Boolean
 
     object Default : JavaResolverSettings {
         override val isReleaseCoroutines: Boolean
             get() = false
+
+        override val useRefinedTypes: Boolean
+            get() = false
     }
 
     companion object {
-        fun create(isReleaseCoroutines: Boolean): JavaResolverSettings =
+        fun create(isReleaseCoroutines: Boolean, useRefinedTypes: Boolean): JavaResolverSettings =
             object : JavaResolverSettings {
                 override val isReleaseCoroutines get() = isReleaseCoroutines
+                override val useRefinedTypes get() = useRefinedTypes
             }
     }
 }
