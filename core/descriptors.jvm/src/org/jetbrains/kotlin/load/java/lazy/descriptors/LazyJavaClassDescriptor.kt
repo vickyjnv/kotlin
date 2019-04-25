@@ -100,11 +100,13 @@ class LazyJavaClassDescriptor(
     private val typeConstructor = LazyJavaClassTypeConstructor()
     override fun getTypeConstructor(): TypeConstructor = typeConstructor
 
-    private val unsubstitutedMemberScope = LazyJavaClassMemberScope(c, this, jClass)
-    override fun getUnsubstitutedMemberScope(moduleDescriptor: ModuleDescriptor) = unsubstitutedMemberScope
-    override fun getUnsubstitutedMemberScope() = unsubstitutedMemberScope
+    private val scopeHolder = ScopesHolderForClass.create(this, c.storageManager) { moduleDescriptor ->
+        LazyJavaClassMemberScope(c, this, jClass, moduleDescriptor)
+    }
 
-    private val innerClassesScope = InnerClassesScopeWrapper(getUnsubstitutedMemberScope())
+    override fun getUnsubstitutedMemberScope(moduleDescriptor: ModuleDescriptor) = scopeHolder.getScope(moduleDescriptor)
+
+    private val innerClassesScope = InnerClassesScopeWrapper(unsubstitutedMemberScope)
     override fun getUnsubstitutedInnerClassesScope(): MemberScope = innerClassesScope
 
     private val staticScope = LazyJavaStaticClassScope(c, jClass, this)
@@ -114,6 +116,7 @@ class LazyJavaClassDescriptor(
 
     override fun getCompanionObjectDescriptor(): ClassDescriptor? = null
 
+    override fun getUnsubstitutedMemberScope() = super.getUnsubstitutedMemberScope() as LazyJavaClassMemberScope
     override fun getConstructors() = unsubstitutedMemberScope.constructors()
 
     override val annotations = c.resolveAnnotations(jClass)
