@@ -12,6 +12,7 @@ import com.intellij.psi.impl.light.LightMethodBuilder
 import com.intellij.psi.impl.light.LightTypeParameterListBuilder
 import com.intellij.psi.util.MethodSignatureBackedByPsiMethod
 import org.jetbrains.kotlin.asJava.builder.LightMemberOriginForDeclaration
+import org.jetbrains.kotlin.asJava.builder.MemberIndex
 import org.jetbrains.kotlin.asJava.elements.KtLightAbstractAnnotation
 import org.jetbrains.kotlin.asJava.elements.KtLightMethodImpl
 import org.jetbrains.kotlin.codegen.FunctionCodegen
@@ -28,7 +29,8 @@ internal abstract class KtUltraLightMethod(
     internal val delegate: LightMethodBuilder,
     closestDeclarationForOrigin: KtDeclaration?,
     protected val support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass
+    containingClass: KtUltraLightClass,
+    memberIndex: Int
 ) : KtLightMethodImpl(
     { delegate },
     closestDeclarationForOrigin?.let {
@@ -36,6 +38,8 @@ internal abstract class KtUltraLightMethod(
     },
     containingClass
 ), KtUltraLightElementWithNullabilityAnnotation<KtDeclaration, PsiMethod> {
+
+    override val memberIndex: MemberIndex? = MemberIndex(memberIndex)
 
     override val psiTypeForNullabilityAnnotation: PsiType?
         get() = returnType
@@ -94,11 +98,14 @@ internal class KtUltraLightMethodForSourceDeclaration(
     delegate: LightMethodBuilder,
     declaration: KtDeclaration,
     support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass
+    containingClass: KtUltraLightClass,
+    memberIndex: Int
 ) : KtUltraLightMethod(
     delegate,
     declaration,
-    support, containingClass
+    support,
+    containingClass,
+    memberIndex
 ) {
     override val kotlinTypeForNullabilityAnnotation: KotlinType?
         get() = kotlinOrigin?.getKotlinType()
@@ -118,13 +125,16 @@ internal class KtUltraLightMethodForDescriptor(
     delegate: LightMethodBuilder,
     closestDeclarationForOrigin: KtDeclaration?,
     support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass
+    containingClass: KtUltraLightClass,
+    memberIndex: Int
 ) : KtUltraLightMethod(
     delegate,
     closestDeclarationForOrigin,
     support,
-    containingClass
+    containingClass,
+    memberIndex
 ) {
+
     override fun buildTypeParameterList() = buildTypeParameterList(descriptor, this, support)
 
     override fun computeDescriptor() = descriptor

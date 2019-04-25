@@ -198,6 +198,7 @@ fun KotlinType.cleanFromAnonymousTypes(): KotlinType? {
 
 fun KtUltraLightClass.createGeneratedMethodFromDescriptor(
     descriptor: FunctionDescriptor,
+    index: Int,
     declarationForOrigin: KtDeclaration? = null
 ): KtLightMethod {
     val lightMethod = lightMethod(descriptor)
@@ -206,7 +207,7 @@ fun KtUltraLightClass.createGeneratedMethodFromDescriptor(
             ?: DescriptorToSourceUtils.descriptorToDeclaration(descriptor) as? KtDeclaration
             ?: kotlinOrigin
 
-    val wrapper = KtUltraLightMethodForDescriptor(descriptor, lightMethod, kotlinOrigin, support, this)
+    val wrapper = KtUltraLightMethodForDescriptor(descriptor, lightMethod, kotlinOrigin, support, this, index)
 
     descriptor.extensionReceiverParameter?.let { receiver ->
         lightMethod.addParameter(KtUltraLightParameterForDescriptor(receiver, kotlinOrigin, support, wrapper))
