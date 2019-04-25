@@ -24,33 +24,30 @@ import org.jetbrains.kotlin.psi.KtElement
 
 abstract class AbstractKotlinReferenceContributor : PsiReferenceContributor() {
     protected inline fun <reified E : KtElement> PsiReferenceRegistrar.registerProvider(
-            priority: Double = PsiReferenceRegistrar.DEFAULT_PRIORITY,
-            crossinline factory: (E) -> PsiReference?
+        crossinline factory: (E) -> PsiReference?
     ) {
-        registerMultiProvider<E>(priority) { factory(it)?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY }
+        registerMultiProvider<E> { factory(it)?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY }
     }
 
     protected inline fun <reified E : KtElement> PsiReferenceRegistrar.registerMultiProvider(
-            priority: Double = PsiReferenceRegistrar.DEFAULT_PRIORITY,
-            crossinline factory: (E) -> Array<PsiReference>
+        crossinline factory: (E) -> Array<PsiReference>
     ) {
-        registerMultiProvider(PlatformPatterns.psiElement(E::class.java), priority, factory)
+        registerMultiProvider(PlatformPatterns.psiElement(E::class.java), factory)
     }
 
     protected inline fun <E : KtElement> PsiReferenceRegistrar.registerMultiProvider(
-            pattern: ElementPattern<E>,
-            priority: Double = PsiReferenceRegistrar.DEFAULT_PRIORITY,
-            crossinline factory: (E) -> Array<PsiReference>
+        pattern: ElementPattern<E>,
+        crossinline factory: (E) -> Array<PsiReference>
     ) {
         registerReferenceProvider(
-                pattern,
-                object : PsiReferenceProvider() {
-                    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
-                        @Suppress("UNCHECKED_CAST")
-                        return factory(element as E)
-                    }
-                },
-                priority
+            pattern,
+            object : PsiReferenceProvider() {
+                override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+                    @Suppress("UNCHECKED_CAST")
+                    return factory(element as E)
+                }
+            },
+            PsiReferenceRegistrar.DEFAULT_PRIORITY
         )
     }
 }
