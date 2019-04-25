@@ -26,9 +26,11 @@ import org.jetbrains.kotlin.codegen.inline.SourceMapper
 import org.jetbrains.kotlin.codegen.serialization.JvmSerializationBindings
 import org.jetbrains.kotlin.codegen.serialization.JvmSerializerExtension
 import org.jetbrains.kotlin.config.LanguageFeature
-import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.load.kotlin.header.KotlinClassHeader
@@ -367,8 +369,5 @@ private val Modality.flags: Int
 private val Visibility.flags: Int
     get() = AsmUtil.getVisibilityAccessFlag(this) ?: throw AssertionError("Unsupported visibility $this")
 
-private val IrField.OtherOrigin: JvmDeclarationOrigin
-    get() = OtherOrigin(descriptor.psiElement, this.descriptor)
-
-internal val IrFunction.OtherOrigin: JvmDeclarationOrigin
-    get() = OtherOrigin(descriptor.psiElement, this.descriptor)
+internal val IrDeclaration.OtherOrigin: JvmDeclarationOrigin
+    get() = OtherOrigin(descriptor)

@@ -129,10 +129,8 @@ public class ConstructorCodegen {
 
         ConstructorContext constructorContext = context.intoConstructor(constructorDescriptor, typeMapper);
 
-        KtSecondaryConstructor constructor = (KtSecondaryConstructor) descriptorToDeclaration(constructorDescriptor);
-
         functionCodegen.generateMethod(
-                JvmDeclarationOriginKt.OtherOrigin(constructor, constructorDescriptor),
+                JvmDeclarationOriginKt.OtherOrigin(constructorDescriptor),
                 constructorDescriptor, constructorContext,
                 new FunctionGenerationStrategy.CodegenBased(state) {
                     @Override
@@ -149,7 +147,8 @@ public class ConstructorCodegen {
                                                 DefaultParameterValueLoader.DEFAULT, null);
 
         new DefaultParameterValueSubstitutor(state).generateOverloadsIfNeeded(
-                constructor, constructorDescriptor, constructorDescriptor, kind, v, memberCodegen
+                (KtSecondaryConstructor) descriptorToDeclaration(constructorDescriptor),
+                constructorDescriptor, constructorDescriptor, kind, v, memberCodegen
         );
 
         registerAccessorForHiddenConstructorIfNeeded(constructorDescriptor);
