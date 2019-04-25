@@ -38,7 +38,7 @@ class KotlinKarma : KotlinJsTestFramework {
         val clientSettings = TCServiceMessagesClientSettings(
             task.name,
             testNameSuffix = task.targetName,
-            prepandSuiteName = true,
+            prependSuiteName = true,
             stackTraceParser = ::parseNodeJsStackTraceAsJvm,
             ignoreOutOfRootNodes = true
         )
