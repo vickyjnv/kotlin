@@ -5,41 +5,80 @@
 
 package org.jetbrains.kotlin.idea.references
 
-import com.intellij.lang.Language
+import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
-import com.intellij.psi.PsiReferenceService
-import com.intellij.psi.impl.source.resolve.reference.ProviderBinding
-import com.intellij.psi.impl.source.resolve.reference.PsiReferenceRegistrarImpl
-import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistryImpl
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.util.ProcessingContext
-import com.intellij.util.containers.ContainerUtil
-import org.jetbrains.kotlin.idea.KotlinLanguage
+import com.intellij.util.containers.MultiMap
 import org.jetbrains.kotlin.psi.KotlinReferenceProvidersService
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.utils.SmartList
+
+interface KotlinPsiReferenceProvider {
+    fun getReferencesByElement(element: PsiElement): Array<PsiReference>
+}
+
+class KotlinPsiReferenceRegistrar {
+    val providers: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider> = MultiMap.create()
+
+    inline fun <reified E : KtElement> registerProvider(
+        crossinline factory: (E) -> PsiReference?
+    ) {
+        registerMultiProvider<E> { element -> factory(element)?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY }
+    }
+
+    inline fun <reified E : KtElement> registerMultiProvider(
+        crossinline factory: (E) -> Array<PsiReference>
+    ) {
+        val provider: KotlinPsiReferenceProvider = object : KotlinPsiReferenceProvider {
+            override fun getReferencesByElement(element: PsiElement): Array<PsiReference> {
+                @Suppress("UNCHECKED_CAST")
+                return factory(element as E)
+            }
+        }
+
+        registerMultiProvider(E::class.java, provider)
+    }
+
+    fun registerMultiProvider(klass: Class<out PsiElement>, provider: KotlinPsiReferenceProvider) {
+        providers.putValue(klass, provider)
+    }
+}
 
 class KtIdeReferenceProviderService : KotlinReferenceProvidersService() {
-    private val kotlinFilteredReferenceProvidersRegistry = object : ReferenceProvidersRegistryImpl() {
-        public override fun doGetReferencesFromProviders(context: PsiElement, hints: PsiReferenceService.Hints): Array<PsiReference> {
-            if (context.language != KotlinLanguage.INSTANCE) return PsiReference.EMPTY_ARRAY
+    private val referenceProviders: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider>
 
-            return super.doGetReferencesFromProviders(context, hints)
+    init {
+        val registrar = KotlinPsiReferenceRegistrar()
+        KotlinReferenceContributor().registerReferenceProviders(registrar)
+        referenceProviders = registrar.providers
+    }
+
+    private fun doGetKotlinReferencesFromProviders(context: PsiElement): Array<PsiReference> {
+        val providers: Collection<KotlinPsiReferenceProvider> = referenceProviders.get(context.javaClass)
+        if (providers.isEmpty()) return PsiReference.EMPTY_ARRAY
+
+        val result = SmartList<PsiReference>()
+        for (provider in providers) {
+            try {
+                val refs = provider.getReferencesByElement(context)
+                result.addAll(refs)
+            } catch (ignored: IndexNotReadyException) {
+                // Ignore and continue to next provider
+            }
         }
 
-        override fun getRegistrar(language: Language): PsiReferenceRegistrarImpl {
-            assert(language == KotlinLanguage.INSTANCE)
+        if (result.isEmpty()) return PsiReference.EMPTY_ARRAY
 
-            val registrar = super.getRegistrar(KotlinLanguage.INSTANCE)
-            return registrar
-        }
+        return result.toTypedArray()
     }
 
     override fun getReferences(psiElement: PsiElement): Array<PsiReference> {
         return CachedValuesManager.getCachedValue(psiElement) {
             CachedValueProvider.Result.create(
-                kotlinFilteredReferenceProvidersRegistry.doGetReferencesFromProviders(psiElement, PsiReferenceService.Hints.NO_HINTS),
+                doGetKotlinReferencesFromProviders(psiElement),
                 PsiModificationTracker.MODIFICATION_COUNT
             )
         }

@@ -16,8 +16,6 @@
 
 package org.jetbrains.kotlin.idea.references
 
-import com.intellij.psi.PsiReference
-import com.intellij.psi.PsiReferenceRegistrar
 import org.jetbrains.kotlin.idea.kdoc.KDocReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtImportDirective
@@ -26,8 +24,8 @@ import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.kotlin.psi.psiUtil.parents
 
-class KotlinReferenceContributor() : AbstractKotlinReferenceContributor() {
-    override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
+class KotlinReferenceContributor {
+    fun registerReferenceProviders(registrar: KotlinPsiReferenceRegistrar) {
         with(registrar) {
             registerProvider(factory = ::KtSimpleNameReference)
 
@@ -39,11 +37,11 @@ class KotlinReferenceContributor() : AbstractKotlinReferenceContributor() {
 
                 when (it.readWriteAccess(useResolveForReadWrite = false)) {
                     ReferenceAccess.READ ->
-                        arrayOf<PsiReference>(SyntheticPropertyAccessorReference.Getter(it))
+                        arrayOf(SyntheticPropertyAccessorReference.Getter(it))
                     ReferenceAccess.WRITE ->
-                        arrayOf<PsiReference>(SyntheticPropertyAccessorReference.Setter(it))
+                        arrayOf(SyntheticPropertyAccessorReference.Setter(it))
                     ReferenceAccess.READ_WRITE ->
-                        arrayOf<PsiReference>(SyntheticPropertyAccessorReference.Getter(it), SyntheticPropertyAccessorReference.Setter(it))
+                        arrayOf(SyntheticPropertyAccessorReference.Getter(it), SyntheticPropertyAccessorReference.Setter(it))
                 }
             }
 
