@@ -64,11 +64,6 @@ class KotlinJsSingleTargetConfigurator(kotlinPluginVersion: String) :
     }
 
     private fun configureApplication(target: KotlinOnlyTarget<KotlinJsCompilation>) {
-        target.compilations.all {
-            if (it.name == KotlinCompilation.MAIN_COMPILATION_NAME) {
-                KotlinWebpack.configure(it)
-            }
-        }
     }
 
     override fun newTestsConfigurator(compilation: KotlinJsCompilation) =
