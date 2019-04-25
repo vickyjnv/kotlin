@@ -57,6 +57,7 @@ import org.jetbrains.kotlin.storage.NotNullLazyValue
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.types.typeUtil.refinedSupertypesIfNeeded
 import org.jetbrains.kotlin.utils.SmartSet
 import org.jetbrains.kotlin.utils.addIfNotNull
 import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
@@ -66,7 +67,8 @@ import java.util.*
 class LazyJavaClassMemberScope(
     c: LazyJavaResolverContext,
     override val ownerDescriptor: ClassDescriptor,
-    private val jClass: JavaClass
+    private val jClass: JavaClass,
+    private val moduleDescriptor: ModuleDescriptor
 ) : LazyJavaScope(c) {
 
     override fun computeMemberIndex() = ClassDeclaredMemberIndex(jClass) { !it.isStatic }
@@ -428,9 +430,10 @@ class LazyJavaClassMemberScope(
     }
 
     private fun getFunctionsFromSupertypes(name: Name): Set<SimpleFunctionDescriptor> {
-        return ownerDescriptor.typeConstructor.supertypes.flatMapTo(LinkedHashSet()) {
-            it.memberScope.getContributedFunctions(name, NoLookupLocation.WHEN_GET_SUPER_MEMBERS)
-        }
+        return ownerDescriptor.refinedSupertypesIfNeeded(moduleDescriptor, c.components.settings.useRefinedTypes)
+            .flatMapTo(LinkedHashSet()) {
+                it.memberScope.getContributedFunctions(name, NoLookupLocation.WHEN_GET_SUPER_MEMBERS)
+            }
     }
 
     override fun computeNonDeclaredProperties(name: Name, result: MutableCollection<PropertyDescriptor>) {
@@ -544,7 +547,7 @@ class LazyJavaClassMemberScope(
     }
 
     private fun getPropertiesFromSupertypes(name: Name): Set<PropertyDescriptor> {
-        return ownerDescriptor.typeConstructor.supertypes.flatMap {
+        return ownerDescriptor.refinedSupertypesIfNeeded(moduleDescriptor, c.components.settings.useRefinedTypes).flatMap {
             it.memberScope.getContributedVariables(name, NoLookupLocation.WHEN_GET_SUPER_MEMBERS).map { p -> p }
         }.toSet()
     }
