@@ -10,7 +10,7 @@ import org.junit.Test
 
 class KotlinNativeStackTraceParserKtTest {
     @Test
-    fun parseKotlinNativeStackTrace() {
+    fun testDebug() {
         assertEquals(
             """
 KotlinNativeStackTrace(
@@ -33,9 +33,9 @@ KotlinNativeStackTraceElement(bin=test.kexe, address=0x00000001049042d0, classNa
 KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902eae, className=kotlin.native.internal.test, methodName=testLauncherEntryPoint, signature=(kotlin.Array<kotlin.String>)kotlin.Int, offset=110, fileName=/Users/teamcity/buildAgent/work/4d622a065c544371/runtime/src/main/kotlin/kotlin/native/internal/test/Launcher.kt, lineNumber=19, columnNumber=47)
 KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902e12, className=kotlin.native.internal.test, methodName=main, signature=(kotlin.Array<kotlin.String>), offset=50, fileName=/Users/teamcity/buildAgent/work/4d622a065c544371/runtime/src/main/kotlin/kotlin/native/internal/test/Launcher.kt, lineNumber=23, columnNumber=5)
 KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902d67, className=null, methodName=Konan_start, signature=(Konan_start, offset=71, fileName=/Users/teamcity/buildAgent/work/4d622a065c544371/runtime/src/launcher/kotlin/konan/start.kt, lineNumber=-1, columnNumber=-1)
-KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902cf1, className=null, methodName=Konan_run_start, signature=(Konan_run_start, offset=113, fileName=17  test.kexe                           0x0000000104902cf1 Konan_run_start + 113, lineNumber=-1, columnNumber=-1)
-KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902c6b, className=null, methodName=Konan_main, signature=(Konan_main, offset=27, fileName=18  test.kexe                           0x0000000104902c6b Konan_main + 27, lineNumber=-1, columnNumber=-1)
-KotlinNativeStackTraceElement(bin=libdyld.dylib, address=0x00007fff5ab4fed9, className=null, methodName=start, signature=(start, offset=1, fileName=19  libdyld.dylib                       0x00007fff5ab4fed9 start + 1, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902cf1, className=null, methodName=Konan_run_start, signature=(Konan_run_start, offset=113, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=test.kexe, address=0x0000000104902c6b, className=null, methodName=Konan_main, signature=(Konan_main, offset=27, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=libdyld.dylib, address=0x00007fff5ab4fed9, className=null, methodName=start, signature=(start, offset=1, fileName=null, lineNumber=-1, columnNumber=-1)
 ])
             """.trim(),
             parseKotlinNativeStackTrace(
@@ -62,6 +62,33 @@ kotlin.AssertionError: Expected <7>, actual <42>.
         at 18  test.kexe                           0x0000000104902c6b Konan_main + 27
         at 19  libdyld.dylib                       0x00007fff5ab4fed9 start + 1                
                 """.trim()
+            ).toString()
+        )
+    }
+
+    @Test
+    fun testRelease() {
+        assertEquals(
+            """
+KotlinNativeStackTrace(
+message="Uncaught Kotlin exception: kotlin.Exception: Foo!",
+stacktrace=[
+KotlinNativeStackTraceElement(bin=program.kexe, address=0x000000010d6ad726, className=kotlin.Exception, methodName=<init>, signature=(kotlin.String?)kotlin.Exception, offset=70, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=program.kexe, address=0x000000010d6bc7a9, className=org.test.A, methodName=<get-qux>, signature=()ValueType, offset=89, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=program.kexe, address=0x000000010d6bc712, className=org.test.A, methodName=baz, signature=()ValueType, offset=50, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=program.kexe, address=0x000000010d6bc633, className=org.test, methodName=bar, signature=()ValueType, offset=67, fileName=null, lineNumber=-1, columnNumber=-1)
+KotlinNativeStackTraceElement(bin=program.kexe, address=0x000000010d6bc5e9, className=org.test, methodName=foo, signature=()ValueType, offset=9, fileName=null, lineNumber=-1, columnNumber=-1)
+])
+            """.trim(),
+            parseKotlinNativeStackTrace(
+                """
+Uncaught Kotlin exception: kotlin.Exception: Foo!
+        at 0   program.kexe                        0x000000010d6ad726 kfun:kotlin.Exception.<init>(kotlin.String?)kotlin.Exception + 70
+        at 1   program.kexe                        0x000000010d6bc7a9 kfun:org.test.A.<get-qux>()ValueType + 89
+        at 2   program.kexe                        0x000000010d6bc712 kfun:org.test.A.baz()ValueType + 50
+        at 3   program.kexe                        0x000000010d6bc633 kfun:org.test.bar()ValueType + 67
+        at 4   program.kexe                        0x000000010d6bc5e9 kfun:org.test.foo()ValueType + 9
+               """.trim()
             ).toString()
         )
     }
