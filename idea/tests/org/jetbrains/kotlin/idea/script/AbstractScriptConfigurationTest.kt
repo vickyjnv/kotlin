@@ -10,6 +10,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.extensions.Extensions
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
@@ -31,6 +32,7 @@ import org.jetbrains.kotlin.idea.core.script.isScriptDependenciesUpdaterDisabled
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings
 import org.jetbrains.kotlin.idea.highlighter.KotlinHighlightingUtil
 import org.jetbrains.kotlin.idea.navigation.GotoCheck
+import org.jetbrains.kotlin.idea.test.PluginTestCaseBase
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.test.InTextDirectivesUtils
 import org.jetbrains.kotlin.test.KotlinTestUtils
@@ -136,7 +138,7 @@ abstract class AbstractScriptDefinitionsOrderTest : AbstractScriptConfigurationT
     }
 }
 
-private val validKeys = setOf("sources", "classpath", "imports", "template-classes-names")
+private val validKeys = setOf("javaHome", "sources", "classpath", "imports", "template-classes-names")
 private const val useDefaultTemplate = "// DEPENDENCIES:"
 private const val templatesSettings = "// TEMPLATES: "
 // some bugs can only be reproduced when some module and script have intersecting library dependencies
@@ -282,7 +284,15 @@ abstract class AbstractScriptConfigurationTest : KotlinCompletionTestCase() {
 
         val libClasses = libSrcDir?.let { compileLibToDir(it) }
 
+        runWriteAction {
+            ProjectJdkTable.getInstance().addJdk(PluginTestCaseBase.mockJdk6(), testRootDisposable)
+            ProjectJdkTable.getInstance().addJdk(PluginTestCaseBase.mockJdk9(), testRootDisposable)
+        }
+
+        val javaHome = File(PluginTestCaseBase.mockJdk9().homePath)
+
         return mapOf(
+            "javaHome" to javaHome,
             "runtime-classes" to ForTestCompileRuntime.runtimeJarForTests(),
             "runtime-source" to File("libraries/stdlib/src"),
             "lib-classes" to libClasses,
