@@ -7,7 +7,7 @@ open class Foo<X>(x: A<X>)
 class Bar : Foo<Any?>(A())
 
 fun test() {
-    Foo<Any?>(A())
+    Foo(A())
     Foo(A<Int>())
 
     object : Foo<Any?>(A<Int>()) {

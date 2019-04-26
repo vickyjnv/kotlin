@@ -5,7 +5,6 @@
 // ACTION: Convert property initializer to getter
 // ACTION: Change to '1u'
 // ACTION: Do not show hints for current method
-// ACTION: Add 'u =' to argument
 
 fun takeUInt(u: UInt) = 0
 

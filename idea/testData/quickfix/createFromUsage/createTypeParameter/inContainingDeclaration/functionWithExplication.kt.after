@@ -6,6 +6,6 @@ fun <X> foo(x: A<X>) {
 }
 
 fun test() {
-    foo<Any?>(A())
+    foo(A())
     foo(A<Int>())
 }

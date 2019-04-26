@@ -12,7 +12,7 @@ open class Foo<X : List<X>>(x: A<X>)
 class Bar : Foo<List<_>>(A())
 
 fun test() {
-    Foo<List<_>>(A())
+    Foo(A())
     Foo(A<I>())
 
     object : Foo<List<_>>(A<I>()) {

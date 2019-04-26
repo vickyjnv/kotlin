@@ -8,5 +8,5 @@ fun <T : Any> oldFun(): T? {
 fun <T : Any> newFun(): T? = null
 
 fun foo(): String? {
-    return newFun()
+    return newFun<Any?>()
 }
