@@ -23,6 +23,7 @@ import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementFinder
 import com.intellij.psi.PsiManager
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.NonClasspathDirectoriesScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -48,11 +49,20 @@ class ScriptDependenciesCache(private val project: Project) {
 
     private val scriptDependenciesCache = LockedCachedValue<ScriptDependencies>(project)
     private val scriptsModificationStampsCache = LockedCachedValue<Long>(project)
+    private val scriptsClasspathScopes = LockedCachedValue<GlobalSearchScope>(project)
 
     operator fun get(virtualFile: VirtualFile): ScriptDependencies? = scriptDependenciesCache.get(virtualFile)
 
     fun shouldRunDependenciesUpdate(file: VirtualFile): Boolean {
         return scriptsModificationStampsCache.put(file, file.modificationStamp) == file.modificationStamp
+    }
+
+    fun getScriptClasspathScope(file: VirtualFile): GlobalSearchScope {
+        return scriptsClasspathScopes.getOrPut(file) {
+            val dependencies = scriptDependenciesCache.get(file)
+            val roots = dependencies?.classpath ?: emptyList()
+            NonClasspathDirectoriesScope.compose(ScriptDependenciesManager.toVfsRoots(roots))
+        }
     }
 
     val allScriptsClasspath by ClearableLazyValue(cacheLock) {
@@ -178,6 +188,17 @@ private class LockedCachedValue<T>(project: Project) {
 
     fun get(value: VirtualFile): T? = lock.write {
         cache.value[value]
+    }
+
+    fun getOrPut(key: VirtualFile, defaultValue: () -> T): T = lock.write {
+        val value = cache.value.get(key)
+        return if (value == null) {
+            val answer = defaultValue()
+            put(key, answer)
+            answer
+        } else {
+            value
+        }
     }
 
     fun remove(file: VirtualFile) = lock.write {
