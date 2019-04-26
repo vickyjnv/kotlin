@@ -2,6 +2,7 @@ package org.jetbrains.kotlin.gradle.plugin
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.BasePlugin
+import com.android.build.gradle.api.AndroidSourceSet
 import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.SourceProvider
 import groovy.lang.Closure
@@ -789,6 +790,82 @@ abstract class AbstractAndroidProjectHandler<V>(private val kotlinConfigurationT
                 applySubplugins(project, compilation, variant, subpluginEnvironment)
             }
             checkAndroidAnnotationProcessorDependencyUsage(project)
+
+            addKotlinDependenciesToAndroidSourceSets(project, kotlinAndroidTarget)
+        }
+    }
+
+    private fun addKotlinDependenciesToAndroidSourceSets(
+        project: Project,
+        kotlinAndroidTarget: KotlinAndroidTarget
+    ) {
+        fun addDependenciesToAndroidSourceSet(
+            androidSourceSet: AndroidSourceSet,
+            apiConfigurationName: String,
+            implementationConfigurationName: String,
+            compileOnlyConfigurationName: String,
+            runtimeOnlyConfigurationName: String
+        ) {
+            project.addExtendsFromRelation(androidSourceSet.apiConfigurationName, apiConfigurationName)
+            project.addExtendsFromRelation(androidSourceSet.implementationConfigurationName, implementationConfigurationName)
+            project.addExtendsFromRelation(androidSourceSet.compileOnlyConfigurationName, compileOnlyConfigurationName)
+            project.addExtendsFromRelation(androidSourceSet.runtimeOnlyConfigurationName, runtimeOnlyConfigurationName)
+        }
+
+        /** First, just add the dependencies from Kotlin source sets created for the Android source sets,
+         * see [org.jetbrains.kotlin.gradle.plugin.AbstractAndroidProjectHandler.configureTarget]
+         */
+        (project.extensions.getByName("android") as BaseExtension).sourceSets.forEach { androidSourceSet ->
+            val kotlinSourceSetName = lowerCamelCaseName(kotlinAndroidTarget.disambiguationClassifier, androidSourceSet.name)
+            project.kotlinExtension.sourceSets.findByName(kotlinSourceSetName)?.let { kotlinSourceSet ->
+                addDependenciesToAndroidSourceSet(
+                    androidSourceSet,
+                    kotlinSourceSet.apiConfigurationName,
+                    kotlinSourceSet.implementationConfigurationName,
+                    kotlinSourceSet.compileOnlyConfigurationName,
+                    kotlinSourceSet.runtimeOnlyConfigurationName
+                )
+            }
+        }
+
+        // Then also add the Kotlin compilation dependencies (which include the dependencies from all source sets that
+        // take part in the compilation) to Android source sets that are only included into a single variant corresponding
+        // to that compilation. This is needed in order for the dependencies to get propagated to
+        // the test variants; see KT-29343;
+
+        // Trivial mapping of Android variants to Android source set names is impossible here,
+        // because some variants have their dedicated source sets with mismatching names, e.g.
+        // variant 'fooBarDebugAndroidTest' <-> source set 'androidTestFooBarDebug'
+        val sourceSetsByVariant: Map<V, List<AndroidSourceSet>> =
+            mutableMapOf<V, List<AndroidSourceSet>>().apply {
+                forEachVariant(project) {
+                    put(it, getSourceProviders(it).filterIsInstance<AndroidSourceSet>())
+                }
+            }
+
+        // Inverse the mapping above:
+        val variantsBySourceSet: Map<AndroidSourceSet, List<V>> =
+            mutableMapOf<AndroidSourceSet, MutableList<V>>().apply {
+                sourceSetsByVariant.forEach { (variant, sourceSets) ->
+                    sourceSets.forEach { sourceSet ->
+                        getOrPut(sourceSet) { mutableListOf() }.add(variant)
+                    }
+                }
+            }
+
+        val singleVariantSourceSets: Map<AndroidSourceSet, V> = variantsBySourceSet
+            .filterValues { variants -> variants.size == 1 }
+            .mapValues { (_, singleVariantList) -> singleVariantList.single() }
+
+        singleVariantSourceSets.forEach { (sourceSet, variant) ->
+            val compilation = kotlinAndroidTarget.compilations.getByName(getVariantName(variant))
+            addDependenciesToAndroidSourceSet(
+                sourceSet,
+                compilation.apiConfigurationName,
+                compilation.implementationConfigurationName,
+                compilation.compileOnlyConfigurationName,
+                compilation.runtimeOnlyConfigurationName
+            )
         }
     }
 
