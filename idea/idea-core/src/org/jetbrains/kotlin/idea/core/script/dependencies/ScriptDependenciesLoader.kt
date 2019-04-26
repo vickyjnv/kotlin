@@ -13,9 +13,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx
 import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.util.containers.SLRUMap
 import org.jetbrains.kotlin.idea.core.script.*
-import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesCache.Companion.MAX_SCRIPTS_CACHED
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.ScriptContentLoader
@@ -26,14 +24,10 @@ import kotlin.script.experimental.dependencies.DependenciesResolver
 abstract class ScriptDependenciesLoader(protected val project: Project) {
 
     fun updateDependencies(file: VirtualFile, scriptDef: KotlinScriptDefinition) {
-        if (fileModificationStamps[file.path] != file.modificationStamp) {
-            fileModificationStamps.put(file.path, file.modificationStamp)
-
+        if (cache.shouldRunDependenciesUpdate(file)) {
             loadDependencies(file, scriptDef)
         }
     }
-
-    private val fileModificationStamps: SLRUMap<String, Long> = SLRUMap(MAX_SCRIPTS_CACHED, MAX_SCRIPTS_CACHED)
 
     protected abstract fun loadDependencies(file: VirtualFile, scriptDef: KotlinScriptDefinition)
     protected abstract fun shouldShowNotification(): Boolean
