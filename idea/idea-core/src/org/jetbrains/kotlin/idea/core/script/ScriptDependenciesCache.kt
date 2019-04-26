@@ -19,6 +19,8 @@ package org.jetbrains.kotlin.idea.core.script
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.extensions.Extensions
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementFinder
@@ -65,6 +67,32 @@ class ScriptDependenciesCache(private val project: Project) {
         }
     }
 
+    val allScriptsSdks by ClearableLazyValue(cacheLock) {
+        scriptDependenciesCache.getAll()
+            .mapNotNull { ScriptDependenciesManager.getInstance(project).getScriptSdk(it.key) }
+            .distinct()
+    }
+
+    val allScriptsSdkRoots by ClearableLazyValue(cacheLock) {
+        allScriptsSdks
+            .filter { it != ProjectRootManager.getInstance(project).projectSdk }
+            .flatMap { it.rootProvider.getFiles(OrderRootType.CLASSES).toList() }
+    }
+
+    val allScriptsSdkSourceRoots by ClearableLazyValue(cacheLock) {
+        allScriptsSdks
+            .filter { it != ProjectRootManager.getInstance(project).projectSdk }
+            .flatMap { it.rootProvider.getFiles(OrderRootType.SOURCES).toList() }
+    }
+
+    val allScriptsSdkRootsScope by ClearableLazyValue(cacheLock) {
+        NonClasspathDirectoriesScope.compose(allScriptsSdkRoots)
+    }
+
+    val allScriptsSdkSourceRootsScope by ClearableLazyValue(cacheLock) {
+        NonClasspathDirectoriesScope.compose(allScriptsSdkSourceRoots)
+    }
+
     val allScriptsClasspath by ClearableLazyValue(cacheLock) {
         val files = scriptDependenciesCache.getAll().flatMap { it.value.classpath }.distinct()
         ScriptDependenciesManager.toVfsRoots(files)
@@ -83,10 +111,19 @@ class ScriptDependenciesCache(private val project: Project) {
     }
 
     private fun onChange(files: List<VirtualFile>) {
+        this::allScriptsSdks.clearValue()
+        this::allScriptsSdkRoots.clearValue()
+        this::allScriptsSdkSourceRoots.clearValue()
+        this::allScriptsSdkRootsScope.clearValue()
+        this::allScriptsSdkSourceRootsScope.clearValue()
+
         this::allScriptsClasspath.clearValue()
         this::allScriptsClasspathScope.clearValue()
+
         this::allLibrarySources.clearValue()
         this::allLibrarySourcesScope.clearValue()
+
+        scriptsClasspathScopes.clear()
 
         val kotlinScriptDependenciesClassFinder =
             Extensions.getArea(project).getExtensionPoint(PsiElementFinder.EP_NAME).extensions
@@ -111,6 +148,7 @@ class ScriptDependenciesCache(private val project: Project) {
 
     fun hasNotCachedRoots(scriptDependencies: ScriptDependencies): Boolean {
         return !allScriptsClasspath.containsAll(ScriptDependenciesManager.toVfsRoots(scriptDependencies.classpath)) ||
+                !allScriptsSdks.contains(ScriptDependenciesManager.getScriptSdk(scriptDependencies)) ||
                 !allLibrarySources.containsAll(ScriptDependenciesManager.toVfsRoots(scriptDependencies.sources))
     }
 
