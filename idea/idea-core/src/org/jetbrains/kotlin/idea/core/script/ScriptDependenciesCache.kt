@@ -19,10 +19,13 @@ package org.jetbrains.kotlin.idea.core.script
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.extensions.Extensions
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementFinder
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.NonClasspathDirectoriesScope
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.containers.SLRUMap
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -43,8 +46,8 @@ class ScriptDependenciesCache(private val project: Project) {
 
     private val cacheLock = ReentrantReadWriteLock()
 
-    private val scriptDependenciesCache = LockedCachedValue<ScriptDependencies>()
-    private val scriptsModificationStampsCache = LockedCachedValue<Long>()
+    private val scriptDependenciesCache = LockedCachedValue<ScriptDependencies>(project)
+    private val scriptsModificationStampsCache = LockedCachedValue<Long>(project)
 
     operator fun get(virtualFile: VirtualFile): ScriptDependencies? = scriptDependenciesCache.get(virtualFile)
 
@@ -157,34 +160,41 @@ private class ClearableLazyValue<in R, out T : Any>(
 }
 
 
-private class LockedCachedValue<T> {
+private class LockedCachedValue<T>(project: Project) {
     private val lock = ReentrantReadWriteLock()
 
-    val cache = SLRUMap<VirtualFile, T>(
-        ScriptDependenciesCache.MAX_SCRIPTS_CACHED,
-        ScriptDependenciesCache.MAX_SCRIPTS_CACHED
+    val cache = CachedValuesManager.getManager(project).createCachedValue(
+        {
+            CachedValueProvider.Result(
+                SLRUMap<VirtualFile, T>(
+                    ScriptDependenciesCache.MAX_SCRIPTS_CACHED,
+                    ScriptDependenciesCache.MAX_SCRIPTS_CACHED
+                ),
+                ProjectRootModificationTracker.getInstance(project)
+            )
+        },
+        false
     )
 
     fun get(value: VirtualFile): T? = lock.write {
-        cache[value]
+        cache.value[value]
     }
 
     fun remove(file: VirtualFile) = lock.write {
-        cache.remove(file)
+        cache.value.remove(file)
     }
 
     fun getAll(): Collection<Map.Entry<VirtualFile, T>> = lock.write {
-        cache.entrySet()
+        cache.value.entrySet()
     }
 
     fun clear() = lock.write {
-        cache.clear()
+        cache.value.clear()
     }
 
     fun put(file: VirtualFile, value: T): T? = lock.write {
         val old = get(file)
-        cache.put(file, value)
+        cache.value.put(file, value)
         old
     }
 }
-
