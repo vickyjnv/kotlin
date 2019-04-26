@@ -10,7 +10,7 @@ fun <A: Any, B: A> foo(b: B): Int {
     var a: A? = null
     var c: Int = 1
 
-    val pair = pair(a, b, c)
+    val pair = pair<A, B>(a, b, c)
     a = pair.first
     c = pair.second
 
