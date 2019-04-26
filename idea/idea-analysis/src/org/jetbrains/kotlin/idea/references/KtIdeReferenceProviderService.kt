@@ -90,6 +90,10 @@ class KtIdeReferenceProviderService : KotlinReferenceProvidersService() {
     }
 
     override fun getReferences(psiElement: PsiElement): Array<PsiReference> {
+        if (psiElement is ContributedReferenceHost) {
+            return ReferenceProvidersRegistry.getReferencesFromProviders(psiElement, PsiReferenceService.Hints.NO_HINTS)
+        }
+
         return CachedValuesManager.getCachedValue(psiElement) {
             CachedValueProvider.Result.create(
                 doGetKotlinReferencesFromProviders(psiElement),
