@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.scripting.definitions
 
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.scripting.resolve.KotlinScriptDefinitionFromAnnotatedTemplate
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.io.File
@@ -23,6 +24,11 @@ const val SCRIPT_DEFINITION_MARKERS_PATH = "META-INF/kotlin/script/templates/"
 const val SCRIPT_DEFINITION_MARKERS_EXTENSION_WITH_DOT = ".classname"
 
 typealias MessageReporter = (CompilerMessageSeverity, String) -> Unit
+
+val MessageCollector.reporter: MessageReporter
+    get() = { severity, message ->
+        this.report(severity, message)
+    }
 
 class ScriptDefinitionsFromClasspathDiscoverySource(
     private val classpath: List<File>,
