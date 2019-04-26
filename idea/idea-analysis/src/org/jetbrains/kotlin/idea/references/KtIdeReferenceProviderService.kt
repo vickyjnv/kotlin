@@ -6,11 +6,16 @@
 package org.jetbrains.kotlin.idea.references
 
 import com.intellij.openapi.project.IndexNotReadyException
+import com.intellij.psi.ContributedReferenceHost
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.PsiReferenceService
+import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.util.containers.ConcurrentFactoryMap
+import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import org.jetbrains.kotlin.psi.KotlinReferenceProvidersService
 import org.jetbrains.kotlin.psi.KtElement
@@ -23,15 +28,11 @@ interface KotlinPsiReferenceProvider {
 class KotlinPsiReferenceRegistrar {
     val providers: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider> = MultiMap.create()
 
-    inline fun <reified E : KtElement> registerProvider(
-        crossinline factory: (E) -> PsiReference?
-    ) {
-        registerMultiProvider<E> { element -> factory(element)?.let { arrayOf(it) } ?: PsiReference.EMPTY_ARRAY }
+    inline fun <reified E : KtElement> registerProvider(crossinline factory: (E) -> PsiReference) {
+        registerMultiProvider<E> { element -> arrayOf(factory(element)) }
     }
 
-    inline fun <reified E : KtElement> registerMultiProvider(
-        crossinline factory: (E) -> Array<PsiReference>
-    ) {
+    inline fun <reified E : KtElement> registerMultiProvider(crossinline factory: (E) -> Array<PsiReference>) {
         val provider: KotlinPsiReferenceProvider = object : KotlinPsiReferenceProvider {
             override fun getReferencesByElement(element: PsiElement): Array<PsiReference> {
                 @Suppress("UNCHECKED_CAST")
@@ -48,17 +49,28 @@ class KotlinPsiReferenceRegistrar {
 }
 
 class KtIdeReferenceProviderService : KotlinReferenceProvidersService() {
-    private val referenceProviders: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider>
+    private val originalProvidersBinding: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider>
+    private val providersBindingCache: Map<Class<out PsiElement>, Array<KotlinPsiReferenceProvider>>
 
     init {
         val registrar = KotlinPsiReferenceRegistrar()
         KotlinReferenceContributor().registerReferenceProviders(registrar)
-        referenceProviders = registrar.providers
+        originalProvidersBinding = registrar.providers
+
+        providersBindingCache = ConcurrentFactoryMap.createMap<Class<out PsiElement>, Array<KotlinPsiReferenceProvider>> { klass ->
+            val result = ContainerUtil.newSmartList<KotlinPsiReferenceProvider>()
+            for (bindingClass in originalProvidersBinding.keySet()) {
+                if (bindingClass.isAssignableFrom(klass)) {
+                    result.addAll(originalProvidersBinding.get(bindingClass))
+                }
+            }
+            result.toTypedArray()
+        }
     }
 
     private fun doGetKotlinReferencesFromProviders(context: PsiElement): Array<PsiReference> {
-        val providers: Collection<KotlinPsiReferenceProvider> = referenceProviders.get(context.javaClass)
-        if (providers.isEmpty()) return PsiReference.EMPTY_ARRAY
+        val providers: Array<KotlinPsiReferenceProvider>? = providersBindingCache[context.javaClass]
+        if (providers == null || providers.isEmpty()) return PsiReference.EMPTY_ARRAY
 
         val result = SmartList<PsiReference>()
         for (provider in providers) {
@@ -70,7 +82,9 @@ class KtIdeReferenceProviderService : KotlinReferenceProvidersService() {
             }
         }
 
-        if (result.isEmpty()) return PsiReference.EMPTY_ARRAY
+        if (result.isEmpty()) {
+            return PsiReference.EMPTY_ARRAY
+        }
 
         return result.toTypedArray()
     }
