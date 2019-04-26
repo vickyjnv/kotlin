@@ -46,21 +46,21 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from(sourceSets.main.allSource)
 }
 
-if (project.findProperty("kotlin.stdlib.js.ir.publish") == "true") {
-    configurePublishing(project)
+archivesBaseName = 'kotlin-test-js-ir'
 
-    archivesBaseName = 'kotlin-test-js-ir'
-
-    jar {
-        manifestAttributes(manifest, project, 'Test')
-    }
-
-    artifacts {
-        archives sourcesJar
-    }
+jar {
+    manifestAttributes(manifest, project, 'Test')
 }
 
-if (project.findProperty("kotlin.stdlib.js.ir.dist") == "true") {
+artifacts {
+    archives sourcesJar
+}
+
+if (project.findProperty("kotlin.stdlib.js.ir.publish")?.toBoolean() == true) {
+    configurePublishing(project)
+}
+
+if (project.findProperty("kotlin.stdlib.js.ir.dist")?.toBoolean() == true) {
     configureDist(project)
 
     dist {

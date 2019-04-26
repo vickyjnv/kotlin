@@ -135,26 +135,27 @@ compileTestKotlin2Js {
     }
 }
 
-if (project.findProperty("kotlin.stdlib.js.ir.publish") == "true") {
-    configurePublishing(project)
-    archivesBaseName = 'kotlin-stdlib-js-ir'
+archivesBaseName = 'kotlin-stdlib-js-ir'
 
-    jar {
-        manifestAttributes(manifest, project, 'Main')
-    }
+jar {
+    manifestAttributes(manifest, project, 'Main')
+}
 
-    task sourcesJar(type: Jar, dependsOn: classes) {
-        classifier = 'sources'
-        from (sourceSets.main.allSource)
-    }
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from (sourceSets.main.allSource)
+}
 
-    artifacts {
-        archives sourcesJar
-    }
+artifacts {
+    archives sourcesJar
 }
 
 
-if (project.findProperty("kotlin.stdlib.js.ir.dist") == "true") {
+if (project.findProperty("kotlin.stdlib.js.ir.publish")?.toBoolean() == true) {
+    configurePublishing(project)
+}
+
+if (project.findProperty("kotlin.stdlib.js.ir.dist")?.toBoolean() == true) {
     configureDist(project)
     dist {
         from (jar, sourcesJar)
