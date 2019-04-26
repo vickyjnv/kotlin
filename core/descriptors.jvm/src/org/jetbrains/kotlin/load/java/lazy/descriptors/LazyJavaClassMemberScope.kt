@@ -68,8 +68,9 @@ class LazyJavaClassMemberScope(
     c: LazyJavaResolverContext,
     override val ownerDescriptor: ClassDescriptor,
     private val jClass: JavaClass,
-    private val moduleDescriptor: ModuleDescriptor
-) : LazyJavaScope(c) {
+    private val moduleDescriptor: ModuleDescriptor,
+    mainScope: LazyJavaClassMemberScope? = null
+) : LazyJavaScope(c, mainScope) {
 
     override fun computeMemberIndex() = ClassDeclaredMemberIndex(jClass) { !it.isStatic }
 
@@ -727,7 +728,8 @@ class LazyJavaClassMemberScope(
 
     override fun getContributedClassifier(name: Name, location: LookupLocation): ClassifierDescriptor? {
         recordLookup(name, location)
-        return nestedClasses(name)
+
+        return (mainScope as LazyJavaClassMemberScope?)?.nestedClasses?.invoke(name) ?: nestedClasses(name)
     }
 
     override fun getContributedFunctions(name: Name, location: LookupLocation): Collection<SimpleFunctionDescriptor> {

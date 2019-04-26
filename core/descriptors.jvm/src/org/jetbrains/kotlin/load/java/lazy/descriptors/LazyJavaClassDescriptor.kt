@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.name.isValidJavaFqName
 import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameUnsafe
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.descriptorUtil.resolveTopLevelClass
 import org.jetbrains.kotlin.resolve.scopes.InnerClassesScopeWrapper
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
@@ -100,8 +101,10 @@ class LazyJavaClassDescriptor(
     private val typeConstructor = LazyJavaClassTypeConstructor()
     override fun getTypeConstructor(): TypeConstructor = typeConstructor
 
+    private val unsubstitutedMemberScope = LazyJavaClassMemberScope(c, this, jClass, module)
+
     private val scopeHolder = ScopesHolderForClass.create(this, c.storageManager) { moduleDescriptor ->
-        LazyJavaClassMemberScope(c, this, jClass, moduleDescriptor)
+        LazyJavaClassMemberScope(c, this, jClass, moduleDescriptor, mainScope = unsubstitutedMemberScope)
     }
 
     override fun getUnsubstitutedMemberScope(moduleDescriptor: ModuleDescriptor) = scopeHolder.getScope(moduleDescriptor)
