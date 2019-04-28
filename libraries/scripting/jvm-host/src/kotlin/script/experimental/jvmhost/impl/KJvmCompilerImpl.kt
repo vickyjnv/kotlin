@@ -19,10 +19,8 @@ import org.jetbrains.kotlin.cli.common.arguments.Argument
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
-import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.*
+import org.jetbrains.kotlin.cli.common.repl.*
 import org.jetbrains.kotlin.cli.common.setupCommonArguments
 import org.jetbrains.kotlin.cli.jvm.*
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
@@ -38,6 +36,7 @@ import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.compiler.plugin.ComponentRegistrar
 import org.jetbrains.kotlin.config.*
+import org.jetbrains.kotlin.descriptors.ScriptDescriptor
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.name.Name
@@ -49,6 +48,8 @@ import org.jetbrains.kotlin.scripting.configuration.ScriptingConfigurationKeys
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.dependencies.ScriptsCompilationDependencies
 import org.jetbrains.kotlin.scripting.dependencies.collectScriptsCompilationDependencies
+import org.jetbrains.kotlin.scripting.repl.ReplCodeAnalyzer
+import org.jetbrains.kotlin.scripting.repl.ReplCompilerStageHistory
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.util.*
 import kotlin.reflect.KClass
@@ -79,7 +80,8 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
         script: SourceCode,
         scriptCompilationConfiguration: ScriptCompilationConfiguration
     ): ResultWithDiagnostics<CompiledScript<*>> =
-        withCompilationContext(script) { messageCollector, ignoredOptionsReportingState, disposable ->
+        withCompilationContext(script) { messageCollector, disposable ->
+            val ignoredOptionsReportingState = IgnoredOptionsReportingState()
             // TODO: refactor/cleanup when the internal resolving API will allow easier info passing between resolver and compiler
 
             val sourcesWithRefinementsState = SourcesWithRefinedConfigurations(script)
@@ -92,10 +94,8 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
                 disposable, kotlinCompilerConfiguration, EnvironmentConfigFiles.JVM_CONFIG_FILES
             )
 
-            val mainKtFile = getMainKtFile(script, initialScriptCompilationConfiguration, environment.project)
-                ?: return failure(script, messageCollector, "Unable to make PSI file from script")
-            if (mainKtFile.declarations.firstIsInstanceOrNull<KtScript>() == null)
-                return failure(script, messageCollector, "Not a script file")
+            val mainKtFile = getScriptKtFile(script, initialScriptCompilationConfiguration, environment.project, messageCollector)
+                .resultOr { return it }
 
             val (sourceFiles, sourceDependencies) =
                 collectRefinedSourcesAndUpdateEnvironment(
@@ -119,24 +119,122 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
             ResultWithDiagnostics.Success(compiledScript, messageCollector.diagnostics)
         }
 
+    fun checkSyntax(
+        script: SourceCode,
+        scriptCompilationConfiguration: ScriptCompilationConfiguration,
+        project: Project
+    ): ResultWithDiagnostics<Boolean> =
+        withMessageCollector(script) { messageCollector ->
+            val ktFile = getScriptKtFile(script, scriptCompilationConfiguration, project, messageCollector)
+                .resultOr { return it }
+            val errorHolder = object : MessageCollectorBasedReporter {
+                override val messageCollector = messageCollector
+            }
+            val syntaxErrorReport = AnalyzerWithCompilerReport.reportSyntaxErrors(ktFile, errorHolder)
+            if (syntaxErrorReport.isHasErrors) failure(messageCollector) else true.asSuccess()
+        }
+
+    fun compileReplSnippet(
+        snippet: SourceCode,
+        codeLine: ReplCodeLine,
+        history: IReplStageHistory<ScriptDescriptor>,
+        baseScriptCompilationConfiguration: ScriptCompilationConfiguration,
+        environment: KotlinCoreEnvironment,
+        replAnalyzer: ReplCodeAnalyzer
+    ): ResultWithDiagnostics<CompiledScript<*>> =
+        withMessageCollector(snippet) { messageCollector ->
+            setIdeaIoUseFallback()
+
+            val ignoredOptionsReportingState = IgnoredOptionsReportingState()
+            val errorHolder = object : MessageCollectorBasedReporter {
+                override val messageCollector = messageCollector
+            }
+
+            val sourcesWithRefinementsState = SourcesWithRefinedConfigurations(snippet)
+            val snippetKtFile = getScriptKtFile(snippet, baseScriptCompilationConfiguration, environment.project, messageCollector)
+                .resultOr { return it }
+
+            val (sourceFiles, sourceDependencies) =
+                collectRefinedSourcesAndUpdateEnvironment(
+                    snippetKtFile, environment, baseScriptCompilationConfiguration,
+                    sourcesWithRefinementsState, messageCollector, ignoredOptionsReportingState
+                )
+
+            val analysisResult = replAnalyzer.analyzeReplLineWithImportedScripts(snippetKtFile, sourceFiles.drop(1), codeLine)
+            AnalyzerWithCompilerReport.reportDiagnostics(analysisResult.diagnostics, errorHolder)
+            val scriptDescriptor = when (analysisResult) {
+                is ReplCodeAnalyzer.ReplLineAnalysisResult.WithErrors -> return failure(messageCollector)
+                is ReplCodeAnalyzer.ReplLineAnalysisResult.Successful -> analysisResult.scriptDescriptor
+                else -> return failure(snippet, messageCollector, "Unexpected result ${analysisResult::class.java}")
+            }
+
+            val type = (scriptDescriptor as ScriptDescriptor).resultValue?.returnType
+
+            val generationState = GenerationState.Builder(
+                snippetKtFile.project,
+                ClassBuilderFactories.BINARIES,
+                replAnalyzer.module,
+                replAnalyzer.trace.bindingContext,
+                sourceFiles,
+                environment.configuration
+            ).build().apply {
+                replSpecific.resultType = type
+                replSpecific.scriptResultFieldName = scriptResultFieldName(codeLine.no)
+                replSpecific.earlierScriptsForReplInterpreter = history.map { it.item }
+                beforeCompile()
+            }
+            KotlinCodegenFacade.generatePackage(
+                generationState,
+                snippetKtFile.script!!.containingKtFile.packageFqName,
+                setOf(snippetKtFile.script!!.containingKtFile),
+                CompilationErrorHandler.THROW_EXCEPTION
+            )
+
+            val generatedClassname = makeScriptBaseName(codeLine)
+            history.push(LineId(codeLine), scriptDescriptor)
+
+            val compiledScript =
+                makeCompiledScript(generationState, snippet, sourceFiles.first(), sourceDependencies) { ktFile ->
+                    sourcesWithRefinementsState.refinedConfigurations.entries.find { ktFile.name == it.key.name }?.value
+                        ?: baseScriptCompilationConfiguration
+                }
+
+            ResultWithDiagnostics.Success(compiledScript, messageCollector.diagnostics)
+        }
+
     private inline fun <T> withCompilationContext(
         script: SourceCode,
-        body: (ScriptDiagnosticsMessageCollector, IgnoredOptionsReportingState, Disposable) -> ResultWithDiagnostics<T>
+        messageCollector: ScriptDiagnosticsMessageCollector = ScriptDiagnosticsMessageCollector(),
+        disposable: Disposable = Disposer.newDisposable(),
+        disposeOnSuccess: Boolean = true,
+        body: (ScriptDiagnosticsMessageCollector, Disposable) -> ResultWithDiagnostics<T>
     ): ResultWithDiagnostics<T> {
-        val messageCollector = ScriptDiagnosticsMessageCollector()
-        val ignoredOptionsReportingState = IgnoredOptionsReportingState()
-        val disposable = Disposer.newDisposable()
-
+        var failed = false
         return try {
             setIdeaIoUseFallback()
-            body(messageCollector, ignoredOptionsReportingState, disposable)
+            body(messageCollector, disposable).also {
+                failed = it is ResultWithDiagnostics.Failure
+            }
         } catch (ex: Throwable) {
+            failed = true
             failure(messageCollector, ex.asDiagnostics(path = script.locationId))
         } finally {
-            disposable.dispose()
+            if (disposeOnSuccess || failed) {
+                disposable.dispose()
+            }
         }
     }
 
+    private inline fun <T> withMessageCollector(
+        script: SourceCode,
+        messageCollector: ScriptDiagnosticsMessageCollector = ScriptDiagnosticsMessageCollector(),
+        body: (ScriptDiagnosticsMessageCollector) -> ResultWithDiagnostics<T>
+    ): ResultWithDiagnostics<T> =
+        try {
+            body(messageCollector)
+        } catch (ex: Throwable) {
+            failure(messageCollector, ex.asDiagnostics(path = script.locationId))
+        }
 
     private fun collectRefinedSourcesAndUpdateEnvironment(
         mainKtFile: KtFile,
@@ -168,10 +266,10 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
         scriptCompilationConfiguration: ScriptCompilationConfiguration,
         sourcesWithRefinementsState: SourcesWithRefinedConfigurations,
         messageCollector: ScriptDiagnosticsMessageCollector,
-        reportingState: IgnoredOptionsReportingState
+        ignoredOptionsReportingState: IgnoredOptionsReportingState
     ): Pair<ScriptCompilationConfiguration, CompilerConfiguration> {
         val kotlinCompilerConfiguration =
-            createInitialCompilerConfiguration(scriptCompilationConfiguration, messageCollector, reportingState)
+            createInitialCompilerConfiguration(scriptCompilationConfiguration, messageCollector, ignoredOptionsReportingState)
 
         val initialScriptCompilationConfiguration =
             scriptCompilationConfiguration.withUpdatesFromCompilerConfiguration(kotlinCompilerConfiguration)
@@ -299,19 +397,25 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
                 else -> throw Exception("Unexpected script without name: $this")
             }
 
-        private fun getMainKtFile(
-            mainScript: SourceCode,
+        private fun getScriptKtFile(
+            script: SourceCode,
             scriptCompilationConfiguration: ScriptCompilationConfiguration,
-            project: Project
-        ): KtFile? {
+            project: Project,
+            messageCollector: ScriptDiagnosticsMessageCollector
+        ): ResultWithDiagnostics<KtFile> {
             val psiFileFactory: PsiFileFactoryImpl = PsiFileFactory.getInstance(project) as PsiFileFactoryImpl
-            val scriptText = getMergedScriptText(mainScript, scriptCompilationConfiguration)
+            val scriptText = getMergedScriptText(script, scriptCompilationConfiguration)
             val virtualFile = ScriptLightVirtualFile(
-                mainScript.scriptFileName(mainScript, scriptCompilationConfiguration),
-                (mainScript as? FileScriptSource)?.file?.path,
+                script.scriptFileName(script, scriptCompilationConfiguration),
+                (script as? FileScriptSource)?.file?.path,
                 scriptText
             )
-            return psiFileFactory.trySetupPsiForFile(virtualFile, KotlinLanguage.INSTANCE, true, false) as KtFile?
+            val ktFile = psiFileFactory.trySetupPsiForFile(virtualFile, KotlinLanguage.INSTANCE, true, false) as KtFile?
+            return when {
+                ktFile == null -> failure(script, messageCollector, "Unable to make PSI file from script")
+                ktFile.declarations.firstIsInstanceOrNull<KtScript>() == null -> failure(script, messageCollector, "Not a script file")
+                else -> ktFile.asSuccess()
+            }
         }
 
         private fun CompilerConfiguration.updateWithRefinedConfigurations(
