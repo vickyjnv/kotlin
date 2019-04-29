@@ -17,9 +17,11 @@ class FirPackageViewDescriptor(override val fqName: FqName, val moduleDescriptor
     }
 
     override val memberScope: MemberScope
-        get() = TODO("not implemented")
+        get() = MemberScope.Empty
+
     override val module: ModuleDescriptor
         get() = moduleDescriptor
+
     override val fragments: List<PackageFragmentDescriptor>
         get() = listOf(FirPackageFragmentDescriptor(fqName, moduleDescriptor))
 

@@ -28,5 +28,9 @@ private fun createSessionForDependencies(
 ) {
     val dependenciesInfo = FirTestModuleInfo()
     moduleInfo.dependencies.add(dependenciesInfo)
-    FirLibrarySession.create(dependenciesInfo, provider, GlobalSearchScope.notScope(sourceScope), environment)
+    val dependenciesScope = GlobalSearchScope.notScope(sourceScope)
+    FirLibrarySession.create(
+        dependenciesInfo, provider, dependenciesScope,
+        environment.project, environment.createPackagePartProvider(dependenciesScope)
+    )
 }

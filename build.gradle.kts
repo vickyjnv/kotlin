@@ -229,7 +229,8 @@ extra["compilerModules"] = arrayOf(
         ":compiler:fir:cones",
         ":compiler:fir:resolve",
         ":compiler:fir:psi2fir",
-        ":compiler:fir:fir2ir"
+        ":compiler:fir:fir2ir",
+        ":compiler:fir:java"
 )
 
 val coreLibProjects = listOf(

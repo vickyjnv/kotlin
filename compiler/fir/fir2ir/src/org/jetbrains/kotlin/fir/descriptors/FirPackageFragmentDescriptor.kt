@@ -18,7 +18,7 @@ class FirPackageFragmentDescriptor(override val fqName: FqName, val moduleDescri
 
 
     override fun getMemberScope(): MemberScope {
-        TODO("not implemented")
+        return MemberScope.Empty
     }
 
     override fun getOriginal(): DeclarationDescriptorWithSource {

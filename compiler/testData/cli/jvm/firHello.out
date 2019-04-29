@@ -1,0 +1,96 @@
+exception: java.lang.IllegalStateException: Backend Internal error: Exception during code generation
+Cause: Unexpected IR element found during code generation. Either code generation for it is not implemented, or it should have been lowered: ERROR_CALL 'Unresolved reference: <Unresolved name: println>#' type=IrErrorType while generating code for:
+FUN name:main visibility:public modality:FINAL <> () returnType:kotlin.Unit
+  BLOCK_BODY
+    ERROR_CALL 'Unresolved reference: <Unresolved name: println>#' type=IrErrorType
+      CONST String type=kotlin.String value="Hello, FIR!"
+
+Element is unknownThe root cause was thrown at: FunctionCodegen.kt:42
+	at org.jetbrains.kotlin.codegen.CompilationErrorHandler.lambda$static$0(CompilationErrorHandler.java:24)
+	at org.jetbrains.kotlin.backend.jvm.JvmBackendFacade.doGenerateFilesInternal$backend_jvm(JvmBackendFacade.kt:71)
+	at org.jetbrains.kotlin.backend.jvm.JvmIrCodegenFactory.generateModule(JvmIrCodegenFactory.kt:46)
+	at org.jetbrains.kotlin.cli.jvm.compiler.KotlinToJVMBytecodeCompiler.compileModulesUsingFrontendIR(KotlinToJVMBytecodeCompiler.kt:372)
+	at org.jetbrains.kotlin.cli.jvm.compiler.KotlinToJVMBytecodeCompiler.compileModules$cli(KotlinToJVMBytecodeCompiler.kt:131)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecute(K2JVMCompiler.kt:166)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecute(K2JVMCompiler.kt:56)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.execImpl(CLICompiler.kt:84)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.execImpl(CLICompiler.kt:42)
+	at org.jetbrains.kotlin.cli.common.CLITool.exec(CLITool.kt:104)
+	at org.jetbrains.kotlin.cli.common.CLITool.exec(CLITool.kt:82)
+	at org.jetbrains.kotlin.cli.common.CLITool.exec(CLITool.kt:50)
+	at org.jetbrains.kotlin.cli.common.CLITool$Companion.doMainNoExit(CLITool.kt:215)
+	at org.jetbrains.kotlin.test.CompilerTestUtil.executeCompiler(CompilerTestUtil.kt:40)
+	at org.jetbrains.kotlin.cli.AbstractCliTest.executeCompilerGrabOutput(AbstractCliTest.java:64)
+	at org.jetbrains.kotlin.cli.AbstractCliTest.doTest(AbstractCliTest.java:94)
+	at org.jetbrains.kotlin.cli.AbstractCliTest.doJvmTest(AbstractCliTest.java:254)
+	at org.jetbrains.kotlin.test.KotlinTestUtils.runTest0(KotlinTestUtils.java:1078)
+	at org.jetbrains.kotlin.test.KotlinTestUtils.runTest(KotlinTestUtils.java:1054)
+	at org.jetbrains.kotlin.cli.CliTestGenerated$Jvm.runTest(CliTestGenerated.java:27)
+	at org.jetbrains.kotlin.cli.CliTestGenerated$Jvm.testFirHello(CliTestGenerated.java:261)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at junit.framework.TestCase.runTest(TestCase.java:176)
+	at org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase.lambda$runTest$6(KtUsefulTestCase.java:267)
+	at org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase.lambda$invokeTestRunnable$7(KtUsefulTestCase.java:308)
+	at com.intellij.testFramework.EdtTestUtilKt.runInEdtAndWait(EdtTestUtil.kt:61)
+	at org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase.invokeTestRunnable(KtUsefulTestCase.java:307)
+	at org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase.runTest(KtUsefulTestCase.java:287)
+	at org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase.defaultRunBare(KtUsefulTestCase.java:322)
+	at com.intellij.testFramework.EdtTestUtil$Companion$runInEdtAndWait$1.invoke(EdtTestUtil.kt:19)
+	at com.intellij.testFramework.EdtTestUtil$Companion$runInEdtAndWait$1.invoke(EdtTestUtil.kt:14)
+	at com.intellij.testFramework.EdtTestUtilKt$runInEdtAndWait$2.run(EdtTestUtil.kt:65)
+	at java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:301)
+	at java.awt.EventQueue.dispatchEventImpl(EventQueue.java:756)
+	at java.awt.EventQueue.access$500(EventQueue.java:97)
+	at java.awt.EventQueue$3.run(EventQueue.java:709)
+	at java.awt.EventQueue$3.run(EventQueue.java:703)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:80)
+	at java.awt.EventQueue.dispatchEvent(EventQueue.java:726)
+	at com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+	at java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:201)
+	at java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+	at java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+	at java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+	at java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
+Caused by: java.lang.RuntimeException: Unexpected IR element found during code generation. Either code generation for it is not implemented, or it should have been lowered: ERROR_CALL 'Unresolved reference: <Unresolved name: println>#' type=IrErrorType while generating code for:
+FUN name:main visibility:public modality:FINAL <> () returnType:kotlin.Unit
+  BLOCK_BODY
+    ERROR_CALL 'Unresolved reference: <Unresolved name: println>#' type=IrErrorType
+      CONST String type=kotlin.String value="Hello, FIR!"
+
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.generate(FunctionCodegen.kt:42)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generateMethod(ClassCodegen.kt:245)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generateDeclaration(ClassCodegen.kt:200)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generate(ClassCodegen.kt:121)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen$Companion.generate(ClassCodegen.kt:185)
+	at org.jetbrains.kotlin.backend.jvm.JvmCodegen.generateClass(JvmCodegen.kt:24)
+	at org.jetbrains.kotlin.backend.jvm.JvmBackend.generateFile(JvmBackend.kt:40)
+	at org.jetbrains.kotlin.backend.jvm.JvmBackendFacade.doGenerateFilesInternal$backend_jvm(JvmBackendFacade.kt:68)
+	... 48 more
+Caused by: java.lang.AssertionError: Unexpected IR element found during code generation. Either code generation for it is not implemented, or it should have been lowered: ERROR_CALL 'Unresolved reference: <Unresolved name: println>#' type=IrErrorType
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitElement(ExpressionCodegen.kt:527)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitElement(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitor$DefaultImpls.visitExpression(IrElementVisitor.kt:52)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitor$DefaultImpls.visitErrorExpression(IrElementVisitor.kt:114)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitErrorExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitErrorExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitor$DefaultImpls.visitErrorCallExpression(IrElementVisitor.kt:115)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitErrorCallExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitErrorCallExpression(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.ir.expressions.impl.IrErrorCallExpressionImpl.accept(IrErrorCallExpressionImpl.kt:43)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitStatementContainer(ExpressionCodegen.kt:254)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitBlockBody(ExpressionCodegen.kt:258)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitBlockBody(ExpressionCodegen.kt:103)
+	at org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl.accept(IrBlockBodyImpl.kt:40)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.generate(ExpressionCodegen.kt:171)
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.doGenerate(FunctionCodegen.kt:63)
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.generate(FunctionCodegen.kt:40)
+	... 55 more
+
+INTERNAL_ERROR

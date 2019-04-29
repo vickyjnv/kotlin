@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.fir.backend
 
-import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.fir.*
@@ -61,6 +60,7 @@ internal class Fir2IrVisitor(
     private val session: FirSession,
     private val moduleDescriptor: FirModuleDescriptor,
     private val symbolTable: SymbolTable,
+    private val sourceManager: PsiSourceManager,
     private val irBuiltIns: IrBuiltIns,
     private val fakeOverrideMode: FakeOverrideMode
 ) : FirVisitor<IrElement, Any?>() {
@@ -141,7 +141,7 @@ internal class Fir2IrVisitor(
 
     override fun visitFile(file: FirFile, data: Any?): IrFile {
         return IrFileImpl(
-            PsiSourceManager.PsiFileEntry(file.psi as PsiFile),
+            sourceManager.getOrCreateFileEntry(file.psi as KtFile),
             moduleDescriptor.findPackageFragmentForFile(file)
         ).withParent {
             file.declarations.forEach {

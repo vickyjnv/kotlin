@@ -59,7 +59,7 @@ abstract class AbstractFirDiagnosticsSmokeTest : BaseDiagnosticsTest() {
         val allProjectScope = GlobalSearchScope.allScope(project)
         FirLibrarySession.create(
             builtInsModuleInfo, sessionProvider, allProjectScope,
-            environment
+            project, environment.createPackagePartProvider(allProjectScope)
         )
 
         val configToSession = modules.mapValues { (config, info) ->
