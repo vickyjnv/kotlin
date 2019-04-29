@@ -28,8 +28,10 @@ interface KotlinPsiReferenceProvider {
 class KotlinPsiReferenceRegistrar {
     val providers: MultiMap<Class<out PsiElement>, KotlinPsiReferenceProvider> = MultiMap.create()
 
-    inline fun <reified E : KtElement> registerProvider(crossinline factory: (E) -> PsiReference) {
-        registerMultiProvider<E> { element -> arrayOf(factory(element)) }
+    inline fun <reified E : KtElement> registerProvider(crossinline factory: (E) -> PsiReference?) {
+        registerMultiProvider<E> { element ->
+            factory(element)?.let { reference -> arrayOf(reference) } ?: PsiReference.EMPTY_ARRAY
+        }
     }
 
     inline fun <reified E : KtElement> registerMultiProvider(crossinline factory: (E) -> Array<PsiReference>) {
@@ -54,7 +56,10 @@ class KtIdeReferenceProviderService : KotlinReferenceProvidersService() {
 
     init {
         val registrar = KotlinPsiReferenceRegistrar()
+
         KotlinReferenceContributor().registerReferenceProviders(registrar)
+        KotlinDefaultAnnotationMethodImplicitReferenceContributor().registerReferenceProviders(registrar)
+
         originalProvidersBinding = registrar.providers
 
         providersBindingCache = ConcurrentFactoryMap.createMap<Class<out PsiElement>, Array<KotlinPsiReferenceProvider>> { klass ->

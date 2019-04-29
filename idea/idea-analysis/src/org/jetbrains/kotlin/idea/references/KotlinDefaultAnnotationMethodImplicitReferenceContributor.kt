@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
 
-class KotlinDefaultAnnotationMethodImplicitReferenceContributor : AbstractKotlinReferenceContributor() {
+class KotlinDefaultAnnotationMethodImplicitReferenceContributor {
     class ReferenceImpl(private val argument: KtValueArgument) : PsiReference {
         private fun resolveAnnotationCallee(): PsiElement? = argument.getStrictParentOfType<KtAnnotationEntry>()
                 ?.calleeExpression
@@ -67,7 +67,7 @@ class KotlinDefaultAnnotationMethodImplicitReferenceContributor : AbstractKotlin
         override fun isSoft() = false
     }
 
-    override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
+    fun registerReferenceProviders(registrar: KotlinPsiReferenceRegistrar) {
         registrar.registerProvider<KtValueArgument> {
             if (it.isNamed()) return@registerProvider null
             val annotationEntry = it.getParentOfTypeAndBranch<KtAnnotationEntry> { valueArgumentList }
