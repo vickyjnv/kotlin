@@ -12,7 +12,7 @@ dependencies {
     compile(project(":core:descriptors"))
     compile(project(":core:deserialization"))
     compile(project(":compiler:fir:cones"))
-    compile(project(":compiler:fir:tree"))
+    compile(project(":compiler:fir"))
     compile(project(":compiler:cli"))
 
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }

@@ -10,7 +10,7 @@ dependencies {
     testCompile(project(":core:deserialization"))
     testCompile(project(":compiler:util"))
     testCompile(project(":compiler:backend"))
-    testCompile(project(":compiler:fir:tree"))
+    testCompile(project(":compiler:fir"))
     testCompile(project(":compiler:fir:psi2fir"))
     testCompile(project(":compiler:fir:fir2ir"))
     testCompile(project(":compiler:fir:cones"))

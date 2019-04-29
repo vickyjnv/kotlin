@@ -11,7 +11,7 @@ plugins {
 dependencies {
     compile(project(":compiler:psi"))
     compile(project(":core:descriptors"))
-    compile(project(":compiler:fir:tree"))
+    compile(project(":compiler:fir"))
     compile(project(":compiler:ir.tree"))
 
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }

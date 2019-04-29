@@ -15,7 +15,7 @@ dependencies {
     compile(kotlinStdlib())
     compileOnly(project(":kotlin-reflect-api"))
     compile(project(":core:descriptors"))
-    compile(project(":compiler:fir:tree"))
+    compile(project(":compiler:fir"))
     compile(project(":compiler:fir:psi2fir"))
 
     compile(project(":idea:idea-core"))

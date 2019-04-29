@@ -12,7 +12,7 @@ dependencies {
     compileOnly(project(":core:descriptors"))
     compileOnly(project(":compiler:fir:cones"))
     compileOnly(project(":compiler:fir:resolve"))
-    compileOnly(project(":compiler:fir:tree"))
+    compileOnly(project(":compiler:fir"))
     compileOnly(project(":compiler:ir.tree"))
     compileOnly(project(":compiler:ir.psi2ir"))
     compileOnly(project(":compiler:ir.backend.common"))
