@@ -2,7 +2,7 @@ package
 
 public val test1: () -> kotlin.Boolean
 public val test1a: () -> kotlin.Boolean
-public val test2: () -> kotlin.Boolean
+public val test2: {Function0<Boolean> & Function0<[ERROR : Cannot be inferred]>}
 public val test2a: () -> kotlin.Boolean
 public val test3: () -> kotlin.Boolean
 public val test3a: () -> kotlin.Boolean

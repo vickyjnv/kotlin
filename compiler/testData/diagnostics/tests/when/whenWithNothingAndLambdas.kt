@@ -10,7 +10,7 @@ val test1a: () -> Boolean = when {
     else -> TODO()
 }
 
-val <!OI;IMPLICIT_NOTHING_PROPERTY_TYPE!>test2<!> = when {
+val <!NI;IMPLICIT_INTERSECTION_TYPE, OI;IMPLICIT_NOTHING_PROPERTY_TYPE!>test2<!> = when {
     true -> { <!OI;TYPE_MISMATCH!>{ true }<!> }
     else -> when {
         true -> { <!OI;TYPE_MISMATCH!>{ true }<!> }

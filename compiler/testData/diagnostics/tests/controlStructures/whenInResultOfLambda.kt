@@ -1,7 +1,9 @@
 // !WITH_NEW_INFERENCE
-val test1 = { when (true) { true -> <!OI;IMPLICIT_CAST_TO_ANY!>1<!>; else -> <!OI;IMPLICIT_CAST_TO_ANY!>""<!> } }
+// NI_EXPECTED_FILE
 
-val test2 = { { when (true) { true -> <!OI;IMPLICIT_CAST_TO_ANY!>1<!>; else -> <!OI;IMPLICIT_CAST_TO_ANY!>""<!> } } }
+val <!NI;IMPLICIT_INTERSECTION_TYPE!>test1<!> = { when (true) { true -> <!OI;IMPLICIT_CAST_TO_ANY!>1<!>; else -> <!OI;IMPLICIT_CAST_TO_ANY!>""<!> } }
+
+val <!NI;IMPLICIT_INTERSECTION_TYPE!>test2<!> = { { when (true) { true -> <!OI;IMPLICIT_CAST_TO_ANY!>1<!>; else -> <!OI;IMPLICIT_CAST_TO_ANY!>""<!> } } }
 
 val test3: (Boolean) -> Any = { when (true) { true -> 1; else -> "" } }
 
