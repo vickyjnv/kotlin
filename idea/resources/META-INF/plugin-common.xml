@@ -530,10 +530,6 @@
         id="kotlinFilePathReferenceContributor"
         language="kotlin"
         implementation="org.jetbrains.kotlin.idea.references.KotlinFilePathReferenceContributor"/>
-    <psi.referenceContributor
-        id="kotlinDefaultAnnotationMethodImplicitReferenceContributor"
-        language="kotlin"
-        implementation="org.jetbrains.kotlin.idea.references.KotlinDefaultAnnotationMethodImplicitReferenceContributor"/>
 
     <psi.treeChangePreprocessor implementation="org.jetbrains.kotlin.idea.caches.KotlinPackageStatementPsiTreeChangePreprocessor"/>
 
