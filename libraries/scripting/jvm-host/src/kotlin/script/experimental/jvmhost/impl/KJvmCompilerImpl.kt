@@ -49,7 +49,6 @@ import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.dependencies.ScriptsCompilationDependencies
 import org.jetbrains.kotlin.scripting.dependencies.collectScriptsCompilationDependencies
 import org.jetbrains.kotlin.scripting.repl.ReplCodeAnalyzer
-import org.jetbrains.kotlin.scripting.repl.ReplCompilerStageHistory
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.util.*
 import kotlin.reflect.KClass
@@ -72,52 +71,89 @@ import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvm.util.KotlinJars
 import kotlin.script.experimental.jvm.withUpdatedClasspath
 import kotlin.script.experimental.jvmhost.KJvmCompilerProxy
+import kotlin.script.experimental.jvmhost.impl.KJvmCompilerImpl.Companion.scriptFileName
+import kotlin.script.experimental.jvmhost.repl.JvmReplCompilerState
+import kotlin.script.experimental.jvmhost.repl.KJvmReplCompilerProxy
 import kotlin.script.experimental.util.getOrError
 
-class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvmCompilerProxy {
+class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvmCompilerProxy, KJvmReplCompilerProxy {
 
     override fun compile(
         script: SourceCode,
         scriptCompilationConfiguration: ScriptCompilationConfiguration
     ): ResultWithDiagnostics<CompiledScript<*>> =
-        withCompilationContext(script) { messageCollector, disposable ->
-            val ignoredOptionsReportingState = IgnoredOptionsReportingState()
-            // TODO: refactor/cleanup when the internal resolving API will allow easier info passing between resolver and compiler
+        withCompilationContext(locationId = script.locationId) { messageCollector, disposable ->
 
-            val sourcesWithRefinementsState = SourcesWithRefinedConfigurations(script)
+            val context = createSharedCompilationContext(scriptCompilationConfiguration, messageCollector, disposable)
 
-            val (initialScriptCompilationConfiguration, kotlinCompilerConfiguration) =
-                createInitialConfigurations(
-                    script, scriptCompilationConfiguration, sourcesWithRefinementsState, messageCollector, ignoredOptionsReportingState
-                )
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, kotlinCompilerConfiguration, EnvironmentConfigFiles.JVM_CONFIG_FILES
-            )
-
-            val mainKtFile = getScriptKtFile(script, initialScriptCompilationConfiguration, environment.project, messageCollector)
+            val mainKtFile = getScriptKtFile(script, context.baseScriptCompilationConfiguration, context.environment.project, messageCollector)
                 .resultOr { return it }
 
-            val (sourceFiles, sourceDependencies) =
-                collectRefinedSourcesAndUpdateEnvironment(
-                    mainKtFile, environment, initialScriptCompilationConfiguration,
-                    sourcesWithRefinementsState, messageCollector, ignoredOptionsReportingState
-                )
+            context.scriptCompilationState.configureFor(script, context.baseScriptCompilationConfiguration)
 
-            val analysisResult = analyze(sourceFiles, environment)
+            val (sourceFiles, sourceDependencies) = collectRefinedSourcesAndUpdateEnvironment(context, mainKtFile, messageCollector)
+
+            val analysisResult = analyze(sourceFiles, context.environment)
 
             if (!analysisResult.shouldGenerateCode) return failure(script, messageCollector, "no code to generate")
             if (analysisResult.isError() || messageCollector.hasErrors()) return failure(messageCollector)
 
-            val generationState = generate(analysisResult, sourceFiles, environment.configuration)
+            val generationState = generate(analysisResult, sourceFiles, context.environment.configuration)
 
             val compiledScript =
                 makeCompiledScript(generationState, script, sourceFiles.first(), sourceDependencies) { ktFile ->
-                    sourcesWithRefinementsState.refinedConfigurations.entries.find { ktFile.name == it.key.name }?.value
-                        ?: initialScriptCompilationConfiguration
+                    context.scriptCompilationState.configurations.entries.find { ktFile.name == it.key.name }?.value
+                        ?: context.baseScriptCompilationConfiguration
                 }
 
             ResultWithDiagnostics.Success(compiledScript, messageCollector.diagnostics)
         }
+
+    private fun createSharedCompilationContext(
+        scriptCompilationConfiguration: ScriptCompilationConfiguration,
+        messageCollector: ScriptDiagnosticsMessageCollector,
+        disposable: Disposable
+    ): SharedScriptCompilationContext {
+        val ignoredOptionsReportingState = IgnoredOptionsReportingState()
+
+        val scriptCompilationState = BridgeScriptDefinitionDynamicState()
+
+        val (initialScriptCompilationConfiguration, kotlinCompilerConfiguration) =
+            createInitialConfigurations(
+                scriptCompilationConfiguration, scriptCompilationState, messageCollector, ignoredOptionsReportingState
+            )
+        val environment = KotlinCoreEnvironment.createForProduction(
+            disposable, kotlinCompilerConfiguration, EnvironmentConfigFiles.JVM_CONFIG_FILES
+        )
+
+        return SharedScriptCompilationContext(
+            disposable, initialScriptCompilationConfiguration, environment, ignoredOptionsReportingState, scriptCompilationState
+        )
+    }
+
+    override fun createReplCompilationState(scriptCompilationConfiguration: ScriptCompilationConfiguration): JvmReplCompilerState.Compilation {
+        val context = withCompilationContext(disposeOnSuccess = false) { messageCollector, disposable ->
+            createSharedCompilationContext(scriptCompilationConfiguration, messageCollector, disposable).asSuccess()
+        }.resultOr { throw IllegalStateException("Unable to initialize repl compiler:\n  ${it.reports.joinToString("\n  ")}") }
+        return ReplCompilationState(context)
+    }
+
+    internal class SharedScriptCompilationContext(
+        val disposable: Disposable,
+        val baseScriptCompilationConfiguration: ScriptCompilationConfiguration,
+        val environment: KotlinCoreEnvironment,
+        val ignoredOptionsReportingState: IgnoredOptionsReportingState,
+        val scriptCompilationState: BridgeScriptDefinitionDynamicState
+    )
+
+    internal class ReplCompilationState(val context: SharedScriptCompilationContext) : JvmReplCompilerState.Compilation {
+        override val disposable: Disposable get() = context.disposable
+        override val baseScriptCompilationConfiguration: ScriptCompilationConfiguration get() = context.baseScriptCompilationConfiguration
+        override val environment: KotlinCoreEnvironment get() = context.environment
+        override val analyzerEngine: ReplCodeAnalyzer by lazy {
+            ReplCodeAnalyzer(context.environment)
+        }
+    }
 
     fun checkSyntax(
         script: SourceCode,
@@ -136,14 +172,20 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
 
     fun compileReplSnippet(
         snippet: SourceCode,
-        codeLine: ReplCodeLine,
+        snippetId: ReplSnippetId,
         history: IReplStageHistory<ScriptDescriptor>,
-        baseScriptCompilationConfiguration: ScriptCompilationConfiguration,
-        environment: KotlinCoreEnvironment,
-        replAnalyzer: ReplCodeAnalyzer
+        compilationState: JvmReplCompilerState.Compilation
     ): ResultWithDiagnostics<CompiledScript<*>> =
         withMessageCollector(snippet) { messageCollector ->
+
+            val context = (compilationState as? ReplCompilationState)?.context
+                ?: return failure(snippet, messageCollector, "Internal error: unknown parameter passed as compilationState: $compilationState")
+
             setIdeaIoUseFallback()
+
+            // NOTE: converting between REPL entities from compiler and "new" scripting entities
+            // TODO: (big) move REPL API from compiler to the new scripting infrastructure and streamline ops
+            val codeLine = makeReplCodeLine(snippetId, snippet)
 
             val ignoredOptionsReportingState = IgnoredOptionsReportingState()
             val errorHolder = object : MessageCollectorBasedReporter {
@@ -151,17 +193,15 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
             }
 
             val sourcesWithRefinementsState = SourcesWithRefinedConfigurations(snippet)
-            val snippetKtFile = getScriptKtFile(snippet, baseScriptCompilationConfiguration, environment.project, messageCollector)
+            val snippetKtFile = getScriptKtFile(snippet, context.baseScriptCompilationConfiguration, context.environment.project, messageCollector)
                 .resultOr { return it }
 
-            val (sourceFiles, sourceDependencies) =
-                collectRefinedSourcesAndUpdateEnvironment(
-                    snippetKtFile, environment, baseScriptCompilationConfiguration,
-                    sourcesWithRefinementsState, messageCollector, ignoredOptionsReportingState
-                )
+            val (sourceFiles, sourceDependencies) = collectRefinedSourcesAndUpdateEnvironment(context, snippetKtFile, messageCollector)
 
-            val analysisResult = replAnalyzer.analyzeReplLineWithImportedScripts(snippetKtFile, sourceFiles.drop(1), codeLine)
+            val analysisResult =
+                compilationState.analyzerEngine.analyzeReplLineWithImportedScripts(snippetKtFile, sourceFiles.drop(1), codeLine)
             AnalyzerWithCompilerReport.reportDiagnostics(analysisResult.diagnostics, errorHolder)
+
             val scriptDescriptor = when (analysisResult) {
                 is ReplCodeAnalyzer.ReplLineAnalysisResult.WithErrors -> return failure(messageCollector)
                 is ReplCodeAnalyzer.ReplLineAnalysisResult.Successful -> analysisResult.scriptDescriptor
@@ -173,10 +213,10 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
             val generationState = GenerationState.Builder(
                 snippetKtFile.project,
                 ClassBuilderFactories.BINARIES,
-                replAnalyzer.module,
-                replAnalyzer.trace.bindingContext,
+                compilationState.analyzerEngine.module,
+                compilationState.analyzerEngine.trace.bindingContext,
                 sourceFiles,
-                environment.configuration
+                compilationState.environment.configuration
             ).build().apply {
                 replSpecific.resultType = type
                 replSpecific.scriptResultFieldName = scriptResultFieldName(codeLine.no)
@@ -196,17 +236,17 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
             val compiledScript =
                 makeCompiledScript(generationState, snippet, sourceFiles.first(), sourceDependencies) { ktFile ->
                     sourcesWithRefinementsState.refinedConfigurations.entries.find { ktFile.name == it.key.name }?.value
-                        ?: baseScriptCompilationConfiguration
+                        ?: context.baseScriptCompilationConfiguration
                 }
 
             ResultWithDiagnostics.Success(compiledScript, messageCollector.diagnostics)
         }
 
     private inline fun <T> withCompilationContext(
-        script: SourceCode,
         messageCollector: ScriptDiagnosticsMessageCollector = ScriptDiagnosticsMessageCollector(),
         disposable: Disposable = Disposer.newDisposable(),
         disposeOnSuccess: Boolean = true,
+        locationId: String? = null,
         body: (ScriptDiagnosticsMessageCollector, Disposable) -> ResultWithDiagnostics<T>
     ): ResultWithDiagnostics<T> {
         var failed = false
@@ -217,7 +257,7 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
             }
         } catch (ex: Throwable) {
             failed = true
-            failure(messageCollector, ex.asDiagnostics(path = script.locationId))
+            failure(messageCollector, ex.asDiagnostics(path = locationId))
         } finally {
             if (disposeOnSuccess || failed) {
                 disposable.dispose()
@@ -237,34 +277,31 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
         }
 
     private fun collectRefinedSourcesAndUpdateEnvironment(
+        context: SharedScriptCompilationContext,
         mainKtFile: KtFile,
-        environment: KotlinCoreEnvironment,
-        initialScriptCompilationConfiguration: ScriptCompilationConfiguration,
-        sourcesWithRefinementsState: SourcesWithRefinedConfigurations,
-        messageCollector: ScriptDiagnosticsMessageCollector,
-        reportingState: IgnoredOptionsReportingState
+        messageCollector: ScriptDiagnosticsMessageCollector
     ): Pair<List<KtFile>, List<ScriptsCompilationDependencies.SourceDependencies>> {
         val sourceFiles = arrayListOf(mainKtFile)
         val (classpath, newSources, sourceDependencies) =
-            collectScriptsCompilationDependencies(environment.configuration, environment.project, sourceFiles)
+            collectScriptsCompilationDependencies(context.environment.configuration, context.environment.project, sourceFiles)
 
         // TODO: consider removing, it is probably redundant: the actual index update is performed with environment.updateClasspath
-        environment.configuration.addJvmClasspathRoots(classpath)
-        environment.updateClasspath(classpath.map(::JvmClasspathRoot))
+        context.environment.configuration.addJvmClasspathRoots(classpath)
+        context.environment.updateClasspath(classpath.map(::JvmClasspathRoot))
 
         sourceFiles.addAll(newSources)
 
         // collectScriptsCompilationDependencies calls resolver for every file, so at this point all updated configurations are collected
-        environment.configuration.updateWithRefinedConfigurations(
-            initialScriptCompilationConfiguration, sourcesWithRefinementsState.refinedConfigurations, messageCollector, reportingState
+        context.environment.configuration.updateWithRefinedConfigurations(
+            context.baseScriptCompilationConfiguration, context.scriptCompilationState.configurations,
+            messageCollector, context.ignoredOptionsReportingState
         )
         return sourceFiles to sourceDependencies
     }
 
     private fun createInitialConfigurations(
-        script: SourceCode,
         scriptCompilationConfiguration: ScriptCompilationConfiguration,
-        sourcesWithRefinementsState: SourcesWithRefinedConfigurations,
+        scriptCompilationState: BridgeScriptDefinitionDynamicState,
         messageCollector: ScriptDiagnosticsMessageCollector,
         ignoredOptionsReportingState: IgnoredOptionsReportingState
     ): Pair<ScriptCompilationConfiguration, CompilerConfiguration> {
@@ -276,47 +313,20 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
 
         kotlinCompilerConfiguration.add(
             ScriptingConfigurationKeys.SCRIPT_DEFINITIONS,
-            makeScriptDefinition(initialScriptCompilationConfiguration, script, sourcesWithRefinementsState)
+            BridgeScriptDefinition(scriptCompilationConfiguration, hostConfiguration, scriptCompilationState)
         )
 
         return Pair(initialScriptCompilationConfiguration, kotlinCompilerConfiguration)
     }
 
-    private class SourcesWithRefinedConfigurations(rootScript: SourceCode) {
+    internal class SourcesWithRefinedConfigurations(rootScript: SourceCode) {
         val knownSources = hashSetOf(rootScript)
         val refinedConfigurations = hashMapOf<SourceCode, ScriptCompilationConfiguration>()
     }
 
-    private class IgnoredOptionsReportingState {
+    class IgnoredOptionsReportingState {
         var currentArguments = K2JVMCompilerArguments()
     }
-
-    private fun makeScriptDefinition(
-        scriptCompilationConfiguration: ScriptCompilationConfiguration,
-        mainScript: SourceCode,
-        sourcsesWithConfigurationsState: SourcesWithRefinedConfigurations
-    ): BridgeScriptDefinition =
-        BridgeScriptDefinition(
-            scriptCompilationConfiguration,
-            hostConfiguration,
-            { script, updatedConfiguration ->
-                sourcsesWithConfigurationsState.refinedConfigurations[script] = updatedConfiguration
-                updatedConfiguration[ScriptCompilationConfiguration.importScripts]?.let {
-                    sourcsesWithConfigurationsState.knownSources.addAll(it)
-                }
-            },
-            { scriptContents ->
-                val name = scriptContents.file?.name
-                sourcsesWithConfigurationsState.knownSources.find {
-                    // TODO: consider using merged text (likely should be cached)
-                    // on the other hand it may become obsolete when scripting internals will be redesigned properly
-                    (name != null && name == it.scriptFileName(
-                        mainScript,
-                        scriptCompilationConfiguration
-                    )) || it.text == scriptContents.text
-                }
-            }
-        )
 
     private fun ScriptCompilationConfiguration.withUpdatesFromCompilerConfiguration(kotlinCompilerConfiguration: CompilerConfiguration) =
         withUpdatedClasspath(kotlinCompilerConfiguration.jvmClasspathRoots)
@@ -387,7 +397,7 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
 
     companion object {
 
-        private fun SourceCode.scriptFileName(
+        internal fun SourceCode.scriptFileName(
             mainScript: SourceCode,
             scriptCompilationConfiguration: ScriptCompilationConfiguration
         ): String =
@@ -420,7 +430,7 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
 
         private fun CompilerConfiguration.updateWithRefinedConfigurations(
             initialScriptCompilationConfiguration: ScriptCompilationConfiguration,
-            refinedScriptCompilationConfigurations: HashMap<SourceCode, ScriptCompilationConfiguration>,
+            refinedScriptCompilationConfigurations: Map<SourceCode, ScriptCompilationConfiguration>,
             messageCollector: ScriptDiagnosticsMessageCollector,
             reportingState: IgnoredOptionsReportingState
         ) {
@@ -639,12 +649,14 @@ private fun failure(
 // A bridge to the current scripting
 // mostly copies functionality from KotlinScriptDefinitionAdapterFromNewAPI[Base]
 // reusing it requires structural changes that doesn't seem justified now, since the internals of the scripting should be reworked soon anyway
-// TODO: either finish refactoring of the scripting internals or reuse KotlinScriptDefinitionAdapterFromNewAPI[BAse] here
+// TODO: either finish refactoring of the scripting internals or reuse KotlinScriptDefinitionAdapterFromNewAPI[Base] here
+// NOTE: since KotlinScriptDefinition is not designed to separate static (script definition related) and dynamic (actual script compilation
+// configuration) parameters, the implementation is quite hacky, especially for cases as REPL
+// TODO: finish refactoring and replace KotlinScriptDefinition with right abstractions
 internal class BridgeScriptDefinition(
     val scriptCompilationConfiguration: ScriptCompilationConfiguration,
     val hostConfiguration: ScriptingHostConfiguration,
-    updateConfiguration: (SourceCode, ScriptCompilationConfiguration) -> Unit,
-    getScriptSource: (ScriptContents) -> SourceCode?
+    dynamicState: BridgeScriptDefinitionDynamicState
 ) : KotlinScriptDefinition(Any::class) {
 
     val baseClass: KClass<*> by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -692,7 +704,7 @@ internal class BridgeScriptDefinition(
             .orEmpty()
 
     override val dependencyResolver: DependenciesResolver =
-        BridgeDependenciesResolver(scriptCompilationConfiguration, updateConfiguration, getScriptSource)
+        BridgeDependenciesResolver(scriptCompilationConfiguration, dynamicState::updateConfiguration, dynamicState::getScriptSource)
 
     private val scriptingClassGetter by lazy(LazyThreadSafetyMode.PUBLICATION) {
         hostConfiguration[ScriptingHostConfiguration.getScriptingClass]
@@ -705,6 +717,51 @@ internal class BridgeScriptDefinition(
             KotlinScriptDefinition::class, // Assuming that the KotlinScriptDefinition class is loaded in the proper classloader
             hostConfiguration
         )
+}
+
+// TODO: consider synchronization, since it is mutable (or finish the refactoring after all)
+internal class BridgeScriptDefinitionDynamicState() {
+
+    private val _sources = linkedSetOf<SourceCode>()
+    private val _configurations = hashMapOf<SourceCode, ScriptCompilationConfiguration>()
+    private var _baseScriptCompilationConfiguration: ScriptCompilationConfiguration? = null
+
+    val sources: Set<SourceCode> get() = _sources
+
+    val configurations: Map<SourceCode, ScriptCompilationConfiguration> get() = _configurations
+
+    val baseScriptCompilationConfiguration: ScriptCompilationConfiguration get() = _baseScriptCompilationConfiguration!!
+
+    val mainScript: SourceCode get() = sources.first()
+
+    val mainScriptCompilationConfiguration: ScriptCompilationConfiguration
+        get() = configurations[mainScript] ?: baseScriptCompilationConfiguration
+
+    fun configureFor(script: SourceCode, scriptCompilationConfiguration: ScriptCompilationConfiguration) {
+        _sources.clear()
+        _sources.add(script)
+        _configurations.clear()
+        _baseScriptCompilationConfiguration = scriptCompilationConfiguration
+    }
+
+    fun updateConfiguration(script: SourceCode, updatedConfiguration: ScriptCompilationConfiguration) {
+        _configurations[script] = updatedConfiguration
+        updatedConfiguration[ScriptCompilationConfiguration.importScripts]?.let {
+            _sources.addAll(it)
+        }
+    }
+
+    fun getScriptSource(scriptContents: ScriptContents): SourceCode? {
+        val name = scriptContents.file?.name
+        return sources.find {
+            // TODO: consider using merged text (likely should be cached)
+            // on the other hand it may become obsolete when scripting internals will be redesigned properly
+            (name != null && name == it.scriptFileName(
+                sources.first(),
+                mainScriptCompilationConfiguration
+            )) || it.text == scriptContents.text
+        }
+    }
 }
 
 internal class ScriptLightVirtualFile(name: String, private val _path: String?, text: String) :
@@ -722,3 +779,6 @@ private fun makeCompiledModule(generationState: GenerationState) = KJvmCompiledM
     generationState.factory.asList()
         .associateTo(sortedMapOf<String, ByteArray>()) { it.relativePath to it.asByteArray() }
 )
+
+private fun makeReplCodeLine(id: ReplSnippetId, code: SourceCode): ReplCodeLine =
+    ReplCodeLine(id.no, id.generation, code.text)
