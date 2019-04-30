@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.context.GlobalContextImpl
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.idea.caches.project.*
 import org.jetbrains.kotlin.idea.caches.project.IdeaModuleInfo
-import org.jetbrains.kotlin.idea.caches.resolve.util.contextWithNewLockAndCompositeExceptionTracker
+import org.jetbrains.kotlin.idea.caches.resolve.util.contextWithCompositeExceptionTracker
 import org.jetbrains.kotlin.idea.compiler.IDELanguageSettingsProvider
 import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesModificationTracker
 import org.jetbrains.kotlin.idea.core.script.dependencies.ScriptAdditionalIdeaDependenciesProvider
@@ -119,7 +119,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
                 getOrBuildGlobalFacade(settings).facadeForSdk
             }
 
-        val globalContext = globalFacade.globalContext.contextWithNewLockAndCompositeExceptionTracker()
+        val globalContext = globalFacade.globalContext.contextWithCompositeExceptionTracker()
         return ProjectResolutionFacade(
             "facadeForScriptDependencies",
             resolverForScriptDependenciesName,
@@ -149,7 +149,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
             reuseDataFrom = null
         )
 
-        private val librariesContext = sdkContext.contextWithNewLockAndCompositeExceptionTracker()
+        private val librariesContext = sdkContext.contextWithCompositeExceptionTracker()
         val facadeForLibraries = ProjectResolutionFacade(
             "facadeForLibraries", "$resolverForLibrariesName for platform ${settings.sdk}",
             project, librariesContext, settings,
@@ -162,7 +162,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
             )
         )
 
-        private val modulesContext = librariesContext.contextWithNewLockAndCompositeExceptionTracker()
+        private val modulesContext = librariesContext.contextWithCompositeExceptionTracker()
         val facadeForModules = ProjectResolutionFacade(
             "facadeForModules", "$resolverForModulesName for platform ${settings.platform}",
             project, modulesContext, settings,
@@ -259,7 +259,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
             specialModuleInfo is ModuleSourceInfo -> {
                 val dependentModules = specialModuleInfo.getDependentModules()
                 val modulesFacade = globalFacade(settings)
-                val globalContext = modulesFacade.globalContext.contextWithNewLockAndCompositeExceptionTracker()
+                val globalContext = modulesFacade.globalContext.contextWithCompositeExceptionTracker()
                 makeProjectResolutionFacade(
                     "facadeForSpecialModuleInfo (ModuleSourceInfo)",
                     globalContext,
@@ -272,7 +272,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
                 val facadeForScriptDependencies = createFacadeForScriptDependencies(
                     ScriptDependenciesInfo.ForFile(project, specialModuleInfo.scriptFile, specialModuleInfo.scriptDefinition)
                 )
-                val globalContext = facadeForScriptDependencies.globalContext.contextWithNewLockAndCompositeExceptionTracker()
+                val globalContext = facadeForScriptDependencies.globalContext.contextWithCompositeExceptionTracker()
                 makeProjectResolutionFacade(
                     "facadeForSpecialModuleInfo (ScriptModuleInfo)",
                     globalContext,
@@ -283,7 +283,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
             }
             specialModuleInfo is ScriptDependenciesInfo -> facadeForScriptDependenciesForProject
             specialModuleInfo is ScriptDependenciesSourceInfo -> {
-                val globalContext = facadeForScriptDependenciesForProject.globalContext.contextWithNewLockAndCompositeExceptionTracker()
+                val globalContext = facadeForScriptDependenciesForProject.globalContext.contextWithCompositeExceptionTracker()
                 makeProjectResolutionFacade(
                     "facadeForSpecialModuleInfo (ScriptDependenciesSourceInfo)",
                     globalContext,
@@ -295,7 +295,7 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
 
             specialModuleInfo is LibrarySourceInfo || specialModuleInfo === NotUnderContentRootModuleInfo -> {
                 val librariesFacade = librariesFacade(settings)
-                val globalContext = librariesFacade.globalContext.contextWithNewLockAndCompositeExceptionTracker()
+                val globalContext = librariesFacade.globalContext.contextWithCompositeExceptionTracker()
                 makeProjectResolutionFacade(
                     "facadeForSpecialModuleInfo (LibrarySourceInfo or NotUnderContentRootModuleInfo)",
                     globalContext,

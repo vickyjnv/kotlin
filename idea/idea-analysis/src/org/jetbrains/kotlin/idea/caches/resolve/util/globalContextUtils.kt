@@ -7,12 +7,11 @@ package org.jetbrains.kotlin.idea.caches.resolve.util
 
 import org.jetbrains.kotlin.context.GlobalContextImpl
 import org.jetbrains.kotlin.storage.ExceptionTracker
-import org.jetbrains.kotlin.storage.LockBasedStorageManager
 
-internal fun GlobalContextImpl.contextWithNewLockAndCompositeExceptionTracker(): GlobalContextImpl {
+internal fun GlobalContextImpl.contextWithCompositeExceptionTracker(): GlobalContextImpl {
     val newExceptionTracker = CompositeExceptionTracker(this.exceptionTracker)
     return GlobalContextImpl(
-        LockBasedStorageManager.createWithExceptionHandling("GlobalContextUtils", newExceptionTracker),
+        storageManager.replaceExceptionHandling("GlobalContextUtils", newExceptionTracker),
         newExceptionTracker
     )
 }
