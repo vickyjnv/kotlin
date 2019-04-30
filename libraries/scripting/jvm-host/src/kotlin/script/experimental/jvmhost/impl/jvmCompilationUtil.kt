@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtScript
+import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.scripting.dependencies.ScriptsCompilationDependencies
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.util.*
@@ -134,6 +135,7 @@ internal fun makeCompiledScript(
                         containingKtFile.virtualFile?.path,
                         getScriptConfiguration(sourceFile),
                         it.fqName.asString(),
+                        null,
                         makeOtherScripts(it),
                         null
                     )
@@ -149,6 +151,9 @@ internal fun makeCompiledScript(
         script.locationId,
         getScriptConfiguration(ktScript.containingKtFile),
         ktScript.fqName.asString(),
+        generationState.replSpecific.resultType?.let { type ->
+            KotlinType(DescriptorRenderer.FQ_NAMES_IN_TYPES.renderType(type))
+        },
         makeOtherScripts(ktScript),
         module
     )

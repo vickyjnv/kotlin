@@ -32,7 +32,7 @@ class KJvmReplCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : 
         return ReplCompilationState(context)
     }
 
-    fun checkSyntax(
+    override fun checkSyntax(
         script: SourceCode,
         scriptCompilationConfiguration: ScriptCompilationConfiguration,
         project: Project
@@ -44,10 +44,14 @@ class KJvmReplCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : 
                 override val messageCollector = messageCollector
             }
             val syntaxErrorReport = AnalyzerWithCompilerReport.reportSyntaxErrors(ktFile, errorHolder)
-            if (syntaxErrorReport.isHasErrors) failure(messageCollector) else true.asSuccess()
+            when {
+                syntaxErrorReport.isHasErrors && syntaxErrorReport.isAllErrorsAtEof -> false.asSuccess(messageCollector.diagnostics)
+                syntaxErrorReport.isHasErrors -> failure(messageCollector)
+                else -> true.asSuccess()
+            }
         }
 
-    fun compileReplSnippet(
+    override fun compileReplSnippet(
         compilationState: JvmReplCompilerState.Compilation,
         snippet: SourceCode,
         snippetId: ReplSnippetId,
@@ -108,7 +112,6 @@ class KJvmReplCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : 
                 CompilationErrorHandler.THROW_EXCEPTION
             )
 
-            val generatedClassname = makeScriptBaseName(codeLine)
             history.push(LineId(codeLine), scriptDescriptor)
 
             val compiledScript =
@@ -133,4 +136,10 @@ internal class ReplCompilationState(val context: SharedScriptCompilationContext)
 internal fun makeReplCodeLine(id: ReplSnippetId, code: SourceCode): ReplCodeLine =
     ReplCodeLine(id.no, id.generation, code.text)
 
+internal class SourceCodeFromReplCodeLine(val codeLine: ReplCodeLine) : SourceCode {
+    override val text: String get() = codeLine.code
+    override val name: String = makeScriptBaseName(codeLine)
+    override val locationId: String? = null
+}
 
+internal fun ReplCodeLine.toSourceCode(): SourceCode = SourceCodeFromReplCodeLine(this)
