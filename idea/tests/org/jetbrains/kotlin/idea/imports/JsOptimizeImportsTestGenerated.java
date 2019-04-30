@@ -119,11 +119,6 @@ public class JsOptimizeImportsTestGenerated extends AbstractJsOptimizeImportsTes
             runTest("idea/testData/editor/optimizeImports/common/KT11640_1.kt");
         }
 
-        @TestMetadata("KT13689.kt")
-        public void testKT13689() throws Exception {
-            runTest("idea/testData/editor/optimizeImports/common/KT13689.kt");
-        }
-
         @TestMetadata("KT9875.kt")
         public void testKT9875() throws Exception {
             runTest("idea/testData/editor/optimizeImports/common/KT9875.kt");
