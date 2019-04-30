@@ -6,11 +6,11 @@
 package org.jetbrains.kotlin.backend.jvm.codegen
 
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
+import org.jetbrains.kotlin.backend.jvm.intrinsics.IrIntrinsicMethods
 import org.jetbrains.kotlin.backend.jvm.intrinsics.JavaClassProperty
 import org.jetbrains.kotlin.backend.jvm.intrinsics.Not
 import org.jetbrains.kotlin.backend.jvm.lower.CrIrType
 import org.jetbrains.kotlin.backend.jvm.lower.constantValue
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.codegen.*
 import org.jetbrains.kotlin.codegen.AsmUtil.*
 import org.jetbrains.kotlin.codegen.inline.*
@@ -778,10 +778,10 @@ class ExpressionCodegen(
                 expression.arguments.forEach {
                     val type = it.accept(this, data).materialized.type
                     if (type.sort != Type.OBJECT)
-                        AsmUtil.genToString(StackValue.onStack(type), type, null, typeMapper).put(expression.asmType, mv)
+                        AsmUtil.genToString(StackValue.onStack(type), type, null, typeMapper.kotlinTypeMapper).put(expression.asmType, mv)
                 }
                 mv.invokestatic(
-                    IntrinsicMethods.INTRINSICS_CLASS_NAME,
+                    IrIntrinsicMethods.INTRINSICS_CLASS_NAME,
                     "stringPlus",
                     "(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/String;",
                     false

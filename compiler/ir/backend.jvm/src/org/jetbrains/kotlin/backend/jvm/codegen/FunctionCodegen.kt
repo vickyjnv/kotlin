@@ -12,8 +12,10 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.dump
+import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isAnnotationClass
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodGenericSignature
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodParameterKind
@@ -44,10 +46,13 @@ open class FunctionCodegen(
         val flags = calculateMethodFlags(irFunction.isStatic)
         val methodVisitor = createMethod(flags, signature)
 
-        generateParameterNames(descriptor, methodVisitor, signature, state, flags.and(Opcodes.ACC_SYNTHETIC) != 0)
+        generateParameterNames(irFunction, methodVisitor, signature, state, flags.and(Opcodes.ACC_SYNTHETIC) != 0)
 
         if (irFunction.origin != IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER) {
-            AnnotationCodegen(classCodegen, state, methodVisitor::visitAnnotation).genAnnotations(irFunction, signature.asmMethod.returnType)
+            AnnotationCodegen(classCodegen, state, methodVisitor::visitAnnotation).genAnnotations(
+                irFunction,
+                signature.asmMethod.returnType
+            )
             generateParameterAnnotations(irFunction, methodVisitor, signature, classCodegen, state)
         }
 
@@ -98,7 +103,7 @@ open class FunctionCodegen(
         // @Throws(vararg exceptionClasses: KClass<out Throwable>)
         val exceptions = irFunction.getAnnotation(FqName("kotlin.jvm.Throws"))?.getValueArgument(0)?.let {
             (it as IrVararg).elements.map { exceptionClass ->
-                classCodegen.typeMapper.mapType((exceptionClass as IrClassReference).classType.toKotlinType()).internalName
+                classCodegen.typeMapper.mapType((exceptionClass as IrClassReference).classType).internalName
             }.toTypedArray()
         }
 
@@ -160,7 +165,6 @@ open class FunctionCodegen(
         return frameMap
     }
 }
-
 
 // Borrowed from org.jetbrains.kotlin.codegen.FunctionCodegen.java
 fun generateParameterAnnotations(
