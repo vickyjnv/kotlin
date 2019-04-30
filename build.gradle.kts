@@ -234,7 +234,6 @@ val coreLibProjects = listOf(
         ":kotlin-stdlib",
         ":kotlin-stdlib-common",
         ":kotlin-stdlib-js",
-        ":kotlin-stdlib-js-ir",
         ":kotlin-stdlib-jdk7",
         ":kotlin-stdlib-jdk8",
         ":kotlin-test:kotlin-test-common",
@@ -244,6 +243,14 @@ val coreLibProjects = listOf(
         ":kotlin-test:kotlin-test-testng",
         ":kotlin-test:kotlin-test-js",
         ":kotlin-reflect"
+) + (
+    // Local builds are disabled at the request of the lib team
+    // TODO: Enable when tests are fixed
+    if (isTeamcityBuild) {
+        listOf(":kotlin-stdlib-js-ir")
+    } else {
+        emptyList()
+    }
 )
 
 val gradlePluginProjects = listOf(
