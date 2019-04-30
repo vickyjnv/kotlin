@@ -251,8 +251,8 @@ interface CompiledScript<out ScriptBase : Any> {
         get() = emptyList()
 
     /**
-     * The type of the script's last expression, if any
+     * The name and the type of the script's result field, if any
      */
-    val resultType: KotlinType?
+    val resultField: Pair<String, KotlinType>?
         get() = null
 }
