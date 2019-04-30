@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.storage.getValue
 import org.jetbrains.kotlin.types.TypeConstructor
 import org.jetbrains.kotlin.types.isExpectClass
 import org.jetbrains.kotlin.utils.DFS
+import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 class ScopesHolderForClass<T : MemberScope> private constructor(
     private val classDescriptor: ClassDescriptor,
@@ -43,6 +44,7 @@ class ScopesHolderForClass<T : MemberScope> private constructor(
 }
 
 fun TypeConstructor.areThereExpectSupertypes(): Boolean {
+    return false
     var result = false
     DFS.dfs(
         listOf(this),
@@ -65,3 +67,6 @@ fun TypeConstructor.areThereExpectSupertypes(): Boolean {
 
     return result
 }
+
+private fun TypeConstructor.isExpectClass() =
+    true || declarationDescriptor?.safeAs<ClassDescriptor>()?.isExpect == true
