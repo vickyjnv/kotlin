@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.asJava.classes
 
 import com.google.common.annotations.VisibleForTesting
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiClassImplUtil
 import com.intellij.psi.impl.PsiSuperMethodImplUtil
@@ -272,45 +271,38 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
 
         val result = arrayListOf<KtLightMethod>()
 
-        val indexer = generateSequence(0) { it + 1 }.iterator()
-
         for (declaration in this.classOrObject.declarations.filterNot { isHiddenByDeprecation(it) }) {
             if (declaration.hasModifier(PRIVATE_KEYWORD) && isInterface) continue
             when (declaration) {
-                is KtNamedFunction -> result.addAll(asJavaMethods(declaration, false, indexer))
-                is KtProperty -> result.addAll(propertyAccessors(declaration, declaration.isVar, false, indexer))
+                is KtNamedFunction -> result.addAll(asJavaMethods(declaration, false))
+                is KtProperty -> result.addAll(propertyAccessors(declaration, declaration.isVar, false))
             }
         }
 
         for (parameter in propertyParameters()) {
-            result.addAll(propertyAccessors(parameter, parameter.isMutable, false, indexer))
+            result.addAll(propertyAccessors(parameter, parameter.isMutable, false))
         }
 
         if (!isInterface) {
-            result.addAll(createConstructors(indexer))
+            result.addAll(createConstructors())
         }
 
         this.classOrObject.companionObjects.firstOrNull()?.let { companion ->
             for (declaration in companion.declarations.filterNot { isHiddenByDeprecation(it) }) {
                 when (declaration) {
-                    is KtNamedFunction -> if (isJvmStatic(declaration)) result.addAll(asJavaMethods(declaration, true, indexer))
-                    is KtProperty -> result.addAll(propertyAccessors(declaration, declaration.isVar, true, indexer))
+                    is KtNamedFunction -> if (isJvmStatic(declaration)) result.addAll(asJavaMethods(declaration, true))
+                    is KtProperty -> result.addAll(propertyAccessors(declaration, declaration.isVar, true))
                 }
             }
         }
 
-        addMethodsFromDataClass(result, indexer)
-        addDelegatesToInterfaceMethods(result, indexer)
-
-        if (result.count() != indexer.next()) {
-            Logger.getInstance(KtUltraLightClass::class.java)
-                .error("ultraLightClass own methods built with invalid MemberIndex'es.")
-        }
+        addMethodsFromDataClass(result)
+        addDelegatesToInterfaceMethods(result)
 
         result
     }
 
-    private fun addMethodsFromDataClass(result: MutableList<KtLightMethod>, indexer: Iterator<Int>) {
+    private fun addMethodsFromDataClass(result: MutableList<KtLightMethod>) {
         if (!classOrObject.hasModifier(DATA_KEYWORD)) return
         val descriptor = classOrObject.resolve() as? ClassDescriptor ?: return
         val bindingContext = classOrObject.analyze()
@@ -320,7 +312,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
 
         object : DataClassMethodGenerator(classOrObject, bindingContext) {
             private fun addFunction(descriptor: FunctionDescriptor, declarationForOrigin: KtDeclaration? = null) {
-                result.add(createGeneratedMethodFromDescriptor(descriptor, indexer.next(), declarationForOrigin))
+                result.add(createGeneratedMethodFromDescriptor(descriptor, declarationForOrigin))
             }
 
             override fun generateComponentFunction(function: FunctionDescriptor, parameter: ValueParameterDescriptor) {
@@ -345,16 +337,15 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         }.generate()
     }
 
-    private fun addDelegatesToInterfaceMethods(result: MutableList<KtLightMethod>, indexer: Iterator<Int>) {
+    private fun addDelegatesToInterfaceMethods(result: MutableList<KtLightMethod>) {
         classOrObject.superTypeListEntries.filterIsInstance<KtDelegatedSuperTypeEntry>().forEach {
-            addDelegatesToInterfaceMethods(it, result, indexer)
+            addDelegatesToInterfaceMethods(it, result)
         }
     }
 
     private fun addDelegatesToInterfaceMethods(
         superTypeEntry: KtDelegatedSuperTypeEntry,
-        result: MutableList<KtLightMethod>,
-        indexer: Iterator<Int>
+        result: MutableList<KtLightMethod>
     ) {
         val classDescriptor = classOrObject.resolve() as? ClassDescriptor ?: return
         val typeReference = superTypeEntry.typeReference ?: return
@@ -367,25 +358,25 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
             when (delegate) {
 
                 is PropertyDescriptor -> delegate.accessors.mapTo(result) {
-                    createGeneratedMethodFromDescriptor(it, indexer.next())
+                    createGeneratedMethodFromDescriptor(it)
                 }
-                is FunctionDescriptor -> result.add(createGeneratedMethodFromDescriptor(delegate, indexer.next()))
+                is FunctionDescriptor -> result.add(createGeneratedMethodFromDescriptor(delegate))
             }
         }
     }
 
-    private fun createConstructors(indexer: Iterator<Int>): List<KtLightMethod> {
+    private fun createConstructors(): List<KtLightMethod> {
         val result = arrayListOf<KtLightMethod>()
         val constructors = classOrObject.allConstructors
         if (constructors.isEmpty()) {
-            result.add(defaultConstructor(indexer.next()))
+            result.add(defaultConstructor())
         }
         for (constructor in constructors.filterNot { isHiddenByDeprecation(it) }) {
-            result.addAll(asJavaMethods(constructor, false, forcePrivate = isEnum, memberIndexer = indexer))
+            result.addAll(asJavaMethods(constructor, false, forcePrivate = isEnum))
         }
         val primary = classOrObject.primaryConstructor
         if (primary != null && shouldGenerateNoArgOverload(primary)) {
-            result.add(noArgConstructor(simpleVisibility(primary), primary, indexer.next()))
+            result.add(noArgConstructor(simpleVisibility(primary), primary))
         }
         return result
     }
@@ -400,14 +391,14 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
                 !primary.hasAnnotation(JVM_OVERLOADS_FQ_NAME)
     }
 
-    private fun defaultConstructor(index: Int): KtUltraLightMethod {
+    private fun defaultConstructor(): KtUltraLightMethod {
         val visibility =
             when {
                 classOrObject is KtObjectDeclaration || classOrObject.hasModifier(SEALED_KEYWORD) || isEnum -> PsiModifier.PRIVATE
                 classOrObject is KtEnumEntry -> PsiModifier.PACKAGE_LOCAL
                 else -> PsiModifier.PUBLIC
             }
-        return noArgConstructor(visibility, classOrObject, index)
+        return noArgConstructor(visibility, classOrObject)
     }
 
     private fun simpleVisibility(declaration: KtDeclaration): String = when {
@@ -416,13 +407,12 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         else -> PsiModifier.PUBLIC
     }
 
-    private fun noArgConstructor(visibility: String, declaration: KtDeclaration, memberIndex: Int): KtUltraLightMethod =
+    private fun noArgConstructor(visibility: String, declaration: KtDeclaration): KtUltraLightMethod =
         KtUltraLightMethodForSourceDeclaration(
             LightMethodBuilder(manager, language, name.orEmpty()).setConstructor(true).addModifier(visibility),
             declaration,
             support,
-            this,
-            memberIndex
+            this
         )
 
     private fun isHiddenByDeprecation(declaration: KtDeclaration): Boolean {
@@ -437,13 +427,12 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
     private fun asJavaMethods(
         ktFunction: KtFunction,
         forceStatic: Boolean,
-        memberIndexer: Iterator<Int>,
         forcePrivate: Boolean = false
     ): Collection<KtLightMethod> {
 
         if (ktFunction.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME)) return emptyList()
 
-        val basicMethod = asJavaMethod(ktFunction, forceStatic, forcePrivate, memberIndex = memberIndexer.next())
+        val basicMethod = asJavaMethod(ktFunction, forceStatic, forcePrivate)
 
         val result = mutableListOf(basicMethod)
 
@@ -455,7 +444,6 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
                         ktFunction,
                         forceStatic,
                         forcePrivate,
-                        memberIndex = memberIndexer.next(),
                         numberOfDefaultParametersToAdd = numberOfDefaultParametersToAdd
                     )
                 )
@@ -469,7 +457,6 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         ktFunction: KtFunction,
         forceStatic: Boolean,
         forcePrivate: Boolean,
-        memberIndex: Int,
         numberOfDefaultParametersToAdd: Int = -1
     ): KtLightMethod {
         val isConstructor = ktFunction is KtConstructor<*>
@@ -479,7 +466,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
             else computeMethodName(ktFunction, ktFunction.name ?: SpecialNames.NO_NAME_PROVIDED.asString(), MethodType.REGULAR)
 
         val method = lightMethod(name.orEmpty(), ktFunction, forceStatic, forcePrivate)
-        val wrapper = KtUltraLightMethodForSourceDeclaration(method, ktFunction, support, this, memberIndex)
+        val wrapper = KtUltraLightMethodForSourceDeclaration(method, ktFunction, support, this)
         addReceiverParameter(ktFunction, wrapper)
 
 
@@ -645,8 +632,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
     private fun propertyAccessors(
         declaration: KtCallableDeclaration,
         mutable: Boolean,
-        onlyJvmStatic: Boolean,
-        indexer: Iterator<Int>
+        onlyJvmStatic: Boolean
     ): List<KtLightMethod> {
 
         val propertyName = declaration.name ?: return emptyList()
@@ -678,7 +664,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
         if (needsAccessor(ktGetter)) {
             val getterName = computeMethodName(ktGetter ?: declaration, JvmAbi.getterName(propertyName), MethodType.GETTER)
             val getterPrototype = lightMethod(getterName, ktGetter ?: declaration, onlyJvmStatic)
-            val getterWrapper = KtUltraLightMethodForSourceDeclaration(getterPrototype, declaration, support, this, indexer.next())
+            val getterWrapper = KtUltraLightMethodForSourceDeclaration(getterPrototype, declaration, support, this)
             val getterType: PsiType by lazyPub { methodReturnType(declaration, getterWrapper) }
             getterPrototype.setMethodReturnType { getterType }
             addReceiverParameter(declaration, getterWrapper)
@@ -689,7 +675,7 @@ open class KtUltraLightClass(classOrObject: KtClassOrObject, internal val suppor
             val setterName = computeMethodName(ktSetter ?: declaration, JvmAbi.setterName(propertyName), MethodType.SETTER)
             val setterPrototype = lightMethod(setterName, ktSetter ?: declaration, onlyJvmStatic)
                 .setMethodReturnType(PsiType.VOID)
-            val setterWrapper = KtUltraLightMethodForSourceDeclaration(setterPrototype, declaration, support, this, indexer.next())
+            val setterWrapper = KtUltraLightMethodForSourceDeclaration(setterPrototype, declaration, support, this)
             addReceiverParameter(declaration, setterWrapper)
             val setterParameter = ktSetter?.parameter
             setterPrototype.addParameter(

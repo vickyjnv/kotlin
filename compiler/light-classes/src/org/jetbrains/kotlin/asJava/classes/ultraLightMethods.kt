@@ -29,8 +29,7 @@ internal abstract class KtUltraLightMethod(
     internal val delegate: LightMethodBuilder,
     closestDeclarationForOrigin: KtDeclaration?,
     protected val support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass,
-    memberIndex: Int
+    containingClass: KtUltraLightClass
 ) : KtLightMethodImpl(
     { delegate },
     closestDeclarationForOrigin?.let {
@@ -39,7 +38,7 @@ internal abstract class KtUltraLightMethod(
     containingClass
 ), KtUltraLightElementWithNullabilityAnnotation<KtDeclaration, PsiMethod> {
 
-    override val memberIndex: MemberIndex? = MemberIndex(memberIndex)
+    override val memberIndex: MemberIndex? = null
 
     override val psiTypeForNullabilityAnnotation: PsiType?
         get() = returnType
@@ -92,20 +91,23 @@ internal abstract class KtUltraLightMethod(
     override fun getThrowsList(): PsiReferenceList = _throwsList
 
     abstract fun computeDescriptor(): FunctionDescriptor?
+
+    override fun equals(other: Any?): Boolean = this === other
+
+    override fun hashCode(): Int =
+        ((name.hashCode() * 31 + (lightMemberOrigin?.hashCode() ?: 0)) * 31 + containingClass.hashCode()) * 31
 }
 
 internal class KtUltraLightMethodForSourceDeclaration(
     delegate: LightMethodBuilder,
     declaration: KtDeclaration,
     support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass,
-    memberIndex: Int
+    containingClass: KtUltraLightClass
 ) : KtUltraLightMethod(
     delegate,
     declaration,
     support,
-    containingClass,
-    memberIndex
+    containingClass
 ) {
     override val kotlinTypeForNullabilityAnnotation: KotlinType?
         get() = kotlinOrigin?.getKotlinType()
@@ -125,14 +127,12 @@ internal class KtUltraLightMethodForDescriptor(
     delegate: LightMethodBuilder,
     closestDeclarationForOrigin: KtDeclaration?,
     support: KtUltraLightSupport,
-    containingClass: KtUltraLightClass,
-    memberIndex: Int
+    containingClass: KtUltraLightClass
 ) : KtUltraLightMethod(
     delegate,
     closestDeclarationForOrigin,
     support,
-    containingClass,
-    memberIndex
+    containingClass
 ) {
 
     override fun buildTypeParameterList() = buildTypeParameterList(descriptor, this, support)
